@@ -129,12 +129,22 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
             {movies.length} {movies.length === 1 ? "title" : "titles"}
           </p>
         </div>
-        <button
-          onClick={() => setView(view === "list" ? "grid" : "list")}
-          className="shrink-0 rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300"
-        >
-          {view === "list" ? "Grid" : "List"}
-        </button>
+        <div className="flex shrink-0 overflow-hidden rounded border border-neutral-700">
+          <ViewButton
+            active={view === "list"}
+            onClick={() => setView("list")}
+            label="List view"
+          >
+            <ListIcon />
+          </ViewButton>
+          <ViewButton
+            active={view === "grid"}
+            onClick={() => setView("grid")}
+            label="Grid view"
+          >
+            <GridIcon />
+          </ViewButton>
+        </div>
       </div>
 
       {view === "list" ? (
@@ -185,6 +195,71 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
         <p className="text-neutral-500">Nothing on the list yet.</p>
       )}
     </main>
+  );
+}
+
+function ViewButton({
+  active,
+  onClick,
+  label,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={active}
+      // p-2.5 keeps the tap target around 40px, which is the floor for thumbs.
+      className={`p-2.5 ${
+        active
+          ? "bg-neutral-100 text-neutral-900"
+          : "bg-transparent text-neutral-400"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+const iconProps = {
+  width: 18,
+  height: 18,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+  "aria-hidden": true,
+};
+
+function ListIcon() {
+  return (
+    <svg {...iconProps}>
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
+  );
+}
+
+function GridIcon() {
+  return (
+    <svg {...iconProps}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+    </svg>
   );
 }
 
