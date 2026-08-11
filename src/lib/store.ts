@@ -15,13 +15,10 @@ interface StoreBackend {
   lrange(key: string, start: number, stop: number): Promise<unknown[]>;
   lrem(key: string, count: number, value: string): Promise<number>;
   lset(key: string, index: number, value: string): Promise<unknown>;
-  incr(key: string): Promise<number>;
-  expire(key: string, seconds: number): Promise<unknown>;
 }
 
 class InMemoryBackend implements StoreBackend {
   private lists = new Map<string, string[]>();
-  private counters = new Map<string, number>();
 
   async rpush(key: string, value: string): Promise<unknown> {
     const list = this.lists.get(key) ?? [];
@@ -52,20 +49,6 @@ class InMemoryBackend implements StoreBackend {
     this.lists.set(key, list);
     return "OK";
   }
-
-  // Dev-only: this counter never expires (expire() below is a no-op), so the
-  // in-memory rate limiter is NOT a real rate limiter across process restarts
-  // or over time. It's fine for local dev; real limiting happens in Upstash.
-  async incr(key: string): Promise<number> {
-    const next = (this.counters.get(key) ?? 0) + 1;
-    this.counters.set(key, next);
-    return next;
-  }
-
-  async expire(): Promise<unknown> {
-    // No-op in-memory: counters never expire. See comment on incr().
-    return 1;
-  }
 }
 
 class UpstashBackend implements StoreBackend {
@@ -89,14 +72,6 @@ class UpstashBackend implements StoreBackend {
 
   async lset(key: string, index: number, value: string): Promise<unknown> {
     return this.client.lset(key, index, value);
-  }
-
-  async incr(key: string): Promise<number> {
-    return this.client.incr(key);
-  }
-
-  async expire(key: string, seconds: number): Promise<unknown> {
-    return this.client.expire(key, seconds);
   }
 }
 
@@ -173,12 +148,4 @@ export async function deleteMovie(id: string): Promise<boolean> {
   await getBackend().lset(MOVIES_KEY, index, DELETE_SENTINEL);
   const removed = await getBackend().lrem(MOVIES_KEY, 1, DELETE_SENTINEL);
   return removed > 0;
-}
-
-/** Returns true if this caller is over budget. 10 adds per hour. */
-export async function isRateLimited(ip: string): Promise<boolean> {
-  const key = `rate:${ip}`;
-  const count = await getBackend().incr(key);
-  if (count === 1) await getBackend().expire(key, 3600);
-  return count > 10;
 }

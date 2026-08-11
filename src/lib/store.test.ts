@@ -146,15 +146,3 @@ describe("store (in-memory fallback)", () => {
     expect(all.map((m) => m.id)).toEqual(["tt3", "tt2"]);
   });
 });
-
-describe("isRateLimited (in-memory fallback)", () => {
-  it("returns false for the first 10 calls and true on the 11th", async () => {
-    const { isRateLimited } = await import("./store");
-    const ip = "1.2.3.4";
-
-    for (let i = 0; i < 10; i++) {
-      expect(await isRateLimited(ip)).toBe(false);
-    }
-    expect(await isRateLimited(ip)).toBe(true);
-  });
-});
