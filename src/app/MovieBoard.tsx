@@ -173,9 +173,10 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
           ))}
         </ul>
       ) : (
-        // Capped at 3 across at every width — more than that makes posters
-        // too small to recognise on a phone.
-        <ul className="grid grid-cols-3 gap-3">
+        // 3 across is the cap — more makes posters unrecognisable on a phone.
+        // Below 360px a third column leaves ~88px cells, which fit but read as
+        // cramped, so narrow phones drop to 2 columns with a wider gutter.
+        <ul className="grid grid-cols-2 gap-4 min-[360px]:grid-cols-3 min-[360px]:gap-3">
           {movies.map((m) => (
             <li key={m.id} className="min-w-0">
               <Poster src={m.poster} title={m.title} variant="grid" />
