@@ -274,9 +274,12 @@ function GridIcon() {
 type Badge = { src: string; alt: string; value: string };
 
 /**
- * Whichever of the three ratings exist, each with its source's logo. Any of
- * them can be missing — Rotten Tomatoes especially, on series and older films.
- * Icons are sized in `em` so they track whatever font size the caller sets.
+ * IMDb and Rotten Tomatoes only. Metacritic is still captured and stored by
+ * the normalizer, it is simply not shown — deliberate, so re-enabling it is a
+ * display change rather than a backfill.
+ *
+ * Either score can be missing: Rotten Tomatoes especially, on series and
+ * older films. Icons are sized in `em` so they track the caller's font size.
  */
 function RatingBadges({ ratings }: { ratings: Movie["ratings"] }) {
   const badges: Badge[] = [];
@@ -284,15 +287,9 @@ function RatingBadges({ ratings }: { ratings: Movie["ratings"] }) {
     badges.push({ src: "/icon-imdb.png", alt: "IMDb", value: ratings.imdb });
   if (ratings.rt)
     badges.push({
-      src: "/icon-rottentomatoes.png",
+      src: "/icon-rottentomatoes.webp",
       alt: "Rotten Tomatoes",
       value: ratings.rt,
-    });
-  if (ratings.metacritic)
-    badges.push({
-      src: "/icon-metacritic.png",
-      alt: "Metacritic",
-      value: ratings.metacritic,
     });
 
   if (badges.length === 0) {
