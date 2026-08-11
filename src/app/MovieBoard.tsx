@@ -1,7 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Movie, SearchResult } from "@/lib/types";
+
+type Sort = "added" | "year-desc" | "year-asc" | "rating-desc";
+
+const SORT_LABELS: Record<Sort, string> = {
+  added: "Recently added",
+  "year-desc": "Newest first",
+  "year-asc": "Oldest first",
+  "rating-desc": "Highest rated",
+};
+
+/** IMDb score as a number. Null/unparseable becomes NaN so it can sort last. */
+function imdbScore(m: Movie): number {
+  return m.ratings.imdb ? parseFloat(m.ratings.imdb) : NaN;
+}
+
+function yearOf(m: Movie): number {
+  return parseInt(m.year, 10);
+}
+
+/**
+ * Sorts descending or ascending on a numeric key, always pushing entries with
+ * no value to the bottom rather than letting them pile up at one end. A film
+ * with no IMDb score should not lead "highest rated" in either direction.
+ */
+function by(key: (m: Movie) => number, direction: "asc" | "desc") {
+  return (a: Movie, b: Movie) => {
+    const x = key(a);
+    const y = key(b);
+    const xMissing = Number.isNaN(x);
+    const yMissing = Number.isNaN(y);
+    if (xMissing && yMissing) return 0;
+    if (xMissing) return 1;
+    if (yMissing) return -1;
+    return direction === "desc" ? y - x : x - y;
+  };
+}
 
 export default function MovieBoard({ initial }: { initial: Movie[] }) {
   const [name, setName] = useState("");
@@ -18,6 +54,22 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
   // from a returning one, and guessing would flash the wrong control. `ready`
   // holds the header in a neutral state for that one render.
   const [ready, setReady] = useState(false);
+  const [sort, setSort] = useState<Sort>("added");
+
+  // "added" is the server's own order (newest first), so it needs no sorting.
+  // Sort on a copy — reversing state in place would mutate it.
+  const sorted = useMemo(() => {
+    switch (sort) {
+      case "year-desc":
+        return [...movies].sort(by(yearOf, "desc"));
+      case "year-asc":
+        return [...movies].sort(by(yearOf, "asc"));
+      case "rating-desc":
+        return [...movies].sort(by(imdbScore, "desc"));
+      default:
+        return movies;
+    }
+  }, [movies, sort]);
 
   // The page is server-rendered, so localStorage cannot be read during render
   // or in a lazy useState initializer without causing a hydration mismatch
@@ -207,8 +259,25 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
       <div className="mb-3 flex items-end justify-between gap-3 border-b border-neutral-800 pb-2">
         <div>
           <h2 className="font-tight text-lg font-semibold">Must watch</h2>
-          <p className="text-xs text-neutral-500">
-            {movies.length} {movies.length === 1 ? "title" : "titles"}
+          {/* Sort sits on the count line rather than in its own row, to keep
+              the header from growing back the space it just gave up. */}
+          <p className="flex items-center gap-1.5 text-xs text-neutral-500">
+            <span className="shrink-0">
+              {movies.length} {movies.length === 1 ? "title" : "titles"}
+            </span>
+            <span aria-hidden>·</span>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as Sort)}
+              aria-label="Sort movies"
+              className="min-w-0 cursor-pointer rounded-lg bg-transparent text-neutral-300"
+            >
+              {(Object.keys(SORT_LABELS) as Sort[]).map((key) => (
+                <option key={key} value={key} className="bg-neutral-900">
+                  {SORT_LABELS[key]}
+                </option>
+              ))}
+            </select>
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -247,7 +316,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
 
       {view === "list" ? (
         <ul className="space-y-3">
-          {movies.map((m) => (
+          {sorted.map((m) => (
             <li key={m.id} className="flex gap-3 border-t border-neutral-800 pt-3">
               <Poster src={m.poster} title={m.title} />
               <div className="min-w-0 flex-1">
@@ -286,7 +355,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
         // Below 360px a third column leaves ~88px cells, which fit but read as
         // cramped, so narrow phones drop to 2 columns with a wider gutter.
         <ul className="grid grid-cols-2 gap-4 min-[360px]:grid-cols-3 min-[360px]:gap-3">
-          {movies.map((m) => (
+          {sorted.map((m) => (
             <li key={m.id} className="min-w-0">
               <div className="relative">
                 <Poster src={m.poster} title={m.title} variant="grid" />
