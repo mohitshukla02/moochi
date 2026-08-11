@@ -56,5 +56,14 @@ export async function fetchMovie(imdbId: string) {
     director: nullIfNA(data.Director),
     plot: nullIfNA(data.Plot),
     ratings: normalizeRatings(data.Ratings),
+    genre: nullIfNA(data.Genre),
+    actors: nullIfNA(data.Actors),
+    writer: nullIfNA(data.Writer),
+    rated: nullIfNA(data.Rated),
+    released: nullIfNA(data.Released),
+    awards: nullIfNA(data.Awards),
+    boxOffice: nullIfNA(data.BoxOffice),
+    country: nullIfNA(data.Country),
+    language: nullIfNA(data.Language),
   };
 }

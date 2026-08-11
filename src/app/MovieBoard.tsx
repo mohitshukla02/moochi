@@ -651,16 +651,19 @@ function MovieModal({
         onClick={(e) => e.stopPropagation()}
         className="animate-panel-in relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-neutral-800 bg-neutral-950 p-4"
       >
-        {/* Absolute so it does not eat width from an already narrow column. */}
-        <button
-          ref={closeRef}
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute right-3 top-3 z-10 h-9 w-9 rounded-lg border border-neutral-700 bg-neutral-950/80 text-neutral-400"
-        >
-          <CrossIcon />
-        </button>
+        {/* Close sits on its own row above the heading, so the title gets the
+            full column width instead of wrapping around it. */}
+        <div className="mb-2 flex justify-end">
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="-mr-1 -mt-1 h-9 w-9 rounded-lg text-neutral-400"
+          >
+            <CrossIcon />
+          </button>
+        </div>
 
         <div className="flex gap-4">
           {/* Half the panel width — the poster is the point of the sheet. */}
@@ -668,49 +671,72 @@ function MovieModal({
             <Poster src={movie.poster} title={movie.title} variant="grid" />
           </div>
           <div className="min-w-0 flex-1">
-            {/* Only the title clears the close button; padding the whole
-                column would cost width the ratings and credits need. */}
-            <h3 className="font-tight pr-10 text-lg font-semibold leading-tight">
+            <h3 className="font-tight text-lg font-semibold leading-tight">
               {movie.title}
             </h3>
-            <p className="text-sm text-neutral-500">{movie.year}</p>
-            <p className="mt-2 text-sm leading-snug text-neutral-500">
-              {[movie.runtime, movie.director].filter(Boolean).join(" · ") ||
-                "No runtime or director listed"}
+            <p className="mt-1 text-sm text-neutral-500">
+              {[movie.released ?? movie.year, movie.rated]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+            {movie.genre && (
+              <p className="mt-2 text-sm leading-snug text-neutral-400">
+                {movie.genre}
+              </p>
+            )}
+            <p className="mt-2 text-sm text-neutral-400">
+              <RatingBadges ratings={movie.ratings} />
             </p>
           </div>
         </div>
-
-        {/* Full width rather than in the narrow column, where the two scores
-            were stacking one per line. */}
-        <p className="mt-3 text-sm text-neutral-400">
-          <RatingBadges ratings={movie.ratings} />
-        </p>
 
         <p className="mt-4 text-sm leading-relaxed text-neutral-300">
           {movie.plot ?? "No synopsis available for this one."}
         </p>
 
-        <dl className="mt-4 space-y-1 border-t border-neutral-800 pt-3 text-xs text-neutral-500">
-          <div className="flex gap-2">
-            <dt className="shrink-0">Added by</dt>
-            <dd className="text-neutral-200">
-              {movie.addedBy}
-              {addedLabel && (
-                <span className="text-neutral-500"> · {addedLabel}</span>
-              )}
-            </dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="shrink-0">Watched by</dt>
-            <dd className="text-neutral-200">
-              {movie.watchedBy.length > 0
+        <dl className="mt-4 space-y-1.5 border-t border-neutral-800 pt-3 text-xs text-neutral-500">
+          <Fact label="Director" value={movie.director} />
+          <Fact label="Cast" value={movie.actors} />
+          <Fact label="Writer" value={movie.writer} />
+          <Fact label="Runtime" value={movie.runtime} />
+          <Fact label="Country" value={movie.country} />
+          <Fact label="Language" value={movie.language} />
+          <Fact label="Box office" value={movie.boxOffice} />
+          <Fact label="Awards" value={movie.awards} />
+          <Fact
+            label="Added by"
+            value={
+              addedLabel ? `${movie.addedBy} · ${addedLabel}` : movie.addedBy
+            }
+          />
+          <Fact
+            label="Watched by"
+            value={
+              movie.watchedBy.length > 0
                 ? movie.watchedBy.join(", ")
-                : "Nobody yet"}
-            </dd>
-          </div>
+                : "Nobody yet"
+            }
+          />
         </dl>
       </div>
+    </div>
+  );
+}
+
+/** One label/value row. Renders nothing when the value is absent, so records
+ *  that predate the backfill just show fewer rows rather than empty ones. */
+function Fact({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) {
+  if (!value) return null;
+  return (
+    <div className="flex gap-2">
+      <dt className="w-20 shrink-0">{label}</dt>
+      <dd className="min-w-0 flex-1 text-neutral-200">{value}</dd>
     </div>
   );
 }

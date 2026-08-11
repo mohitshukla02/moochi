@@ -13,6 +13,20 @@ export type Movie = {
   director: string | null;
   plot: string | null;
   ratings: Ratings;
+  /**
+   * Extra OMDb detail, shown in the movie modal. Optional because records
+   * written before these were captured do not have them — the backfill route
+   * fills them in, and the UI simply omits whatever is still missing.
+   */
+  genre?: string | null;
+  actors?: string | null;
+  writer?: string | null;
+  rated?: string | null;
+  released?: string | null;
+  awards?: string | null;
+  boxOffice?: string | null;
+  country?: string | null;
+  language?: string | null;
   addedBy: string;
   addedAt: string;
   /**
@@ -43,6 +57,15 @@ export type OmdbMovie = {
   Runtime: string;
   Director: string;
   Plot: string;
+  Genre: string;
+  Actors: string;
+  Writer: string;
+  Rated: string;
+  Released: string;
+  Awards: string;
+  BoxOffice: string;
+  Country: string;
+  Language: string;
   Ratings?: OmdbRating[];
 };
 

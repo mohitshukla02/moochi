@@ -169,6 +169,24 @@ export async function toggleWatched(
   return updated;
 }
 
+/**
+ * Merges `patch` into a stored movie and returns the result, or null if it is
+ * gone. Only the keys in `patch` change — everything else on the record,
+ * notably addedBy/addedAt/watchedBy, is carried through untouched.
+ */
+export async function patchMovie(
+  id: string,
+  patch: Partial<Movie>
+): Promise<Movie | null> {
+  const entries = await listRaw();
+  const index = entries.findIndex((e) => e.movie.id === id);
+  if (index === -1) return null;
+
+  const updated = { ...entries[index].movie, ...patch };
+  await getBackend().lset(MOVIES_KEY, index, JSON.stringify(updated));
+  return updated;
+}
+
 const DELETE_SENTINEL = "__moochi_deleted__";
 
 export async function deleteMovie(id: string): Promise<boolean> {

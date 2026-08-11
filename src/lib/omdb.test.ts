@@ -45,7 +45,54 @@ describe("fetchMovie", () => {
       director: "Christopher Nolan",
       plot: "When the menace known as the Joker...",
       ratings: { imdb: "9.0/10", rt: "94%", metacritic: null },
+      // Absent from this payload, so they normalize to null rather than
+      // undefined — the modal treats both as "omit", but null is what actually
+      // gets written to storage.
+      genre: null,
+      actors: null,
+      writer: null,
+      rated: null,
+      released: null,
+      awards: null,
+      boxOffice: null,
+      country: null,
+      language: null,
     });
+  });
+
+  it("maps the extra detail fields when present", async () => {
+    vi.stubEnv("OMDB_API_KEY", "testkey");
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        Response: "True",
+        imdbID: "tt0468569",
+        Title: "The Dark Knight",
+        Year: "2008",
+        Poster: "N/A",
+        Runtime: "152 min",
+        Director: "Christopher Nolan",
+        Plot: "N/A",
+        Genre: "Action, Crime, Drama",
+        Actors: "Christian Bale, Heath Ledger, Aaron Eckhart",
+        Writer: "Jonathan Nolan, Christopher Nolan",
+        Rated: "PG-13",
+        Released: "18 Jul 2008",
+        Awards: "Won 2 Oscars. 163 wins & 165 nominations total",
+        BoxOffice: "$534,987,076",
+        Country: "United States, United Kingdom",
+        Language: "N/A",
+      })
+    );
+
+    const movie = await fetchMovie("tt0468569");
+
+    expect(movie.genre).toBe("Action, Crime, Drama");
+    expect(movie.actors).toBe("Christian Bale, Heath Ledger, Aaron Eckhart");
+    expect(movie.rated).toBe("PG-13");
+    expect(movie.boxOffice).toBe("$534,987,076");
+    // "N/A" is OMDb's way of omitting a field.
+    expect(movie.language).toBeNull();
   });
 
   it("converts N/A fields to null", async () => {
