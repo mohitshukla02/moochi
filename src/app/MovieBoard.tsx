@@ -652,48 +652,43 @@ function MovieModal({
         onClick={(e) => e.stopPropagation()}
         className="animate-panel-in relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-neutral-800 bg-neutral-950 p-4"
       >
-        {/* Close sits on its own row above the heading, so the title gets the
-            full column width instead of wrapping around it. */}
-        <div className="mb-2 flex justify-end">
+        {/* Title and close share the top line, both hugging their own edge. */}
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="font-tight min-w-0 text-lg font-semibold leading-tight">
+            {movie.title}
+          </h3>
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="-mr-1 -mt-1 h-9 w-9 rounded-lg text-neutral-400"
+            className="-mr-1 -mt-1 h-9 w-9 shrink-0 rounded-lg text-neutral-400"
           >
             <CrossIcon />
           </button>
         </div>
 
-        {/* Title block sits above the poster, left aligned. */}
-        <h3 className="font-tight text-lg font-semibold leading-tight">
-          {movie.title}
-        </h3>
-        <p className="mt-1 text-sm text-neutral-500">
-          {[movie.released ?? movie.year, movie.rated].filter(Boolean).join(" · ")}
-        </p>
-        {movie.genre && (
-          <p className="mt-2 text-sm leading-snug text-neutral-400">
-            {movie.genre}
+        <div className="mt-3 w-1/2">
+          <Poster src={movie.poster} title={movie.title} variant="grid" />
+        </div>
+
+        {/* Everything else lives below the poster. */}
+        {oscars !== null && (
+          <p className="mt-3 inline-block rounded-lg border border-amber-700/60 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-300">
+            Won {oscars} Oscar{oscars === 1 ? "" : "s"}
           </p>
         )}
-        <p className="mt-2 text-sm text-neutral-400">
+
+        <p className="mt-3 text-sm text-neutral-400">
           <RatingBadges ratings={movie.ratings} />
         </p>
 
-        <div className="mt-3 flex items-start gap-3">
-          <div className="w-1/2 shrink-0">
-            <Poster src={movie.poster} title={movie.title} variant="grid" />
-          </div>
-          {oscars !== null && (
-            <p className="rounded-lg border border-amber-700/60 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium leading-snug text-amber-300">
-              Won {oscars} Oscar{oscars === 1 ? "" : "s"}
-            </p>
-          )}
-        </div>
+        <p className="mt-2 text-sm text-neutral-500">
+          {[movie.released ?? movie.year, movie.rated].filter(Boolean).join(" · ")}
+          {movie.genre && ` · ${movie.genre}`}
+        </p>
 
-        <p className="mt-4 text-sm leading-relaxed text-neutral-300">
+        <p className="mt-3 text-sm leading-relaxed text-neutral-300">
           {movie.plot ?? "No synopsis available for this one."}
         </p>
 
