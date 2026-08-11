@@ -384,7 +384,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                   {m.watchedBy.length > 0 && (
                     <>
                       {" · watched by "}
-                      <span className="text-emerald-300">
+                      <span className="text-neutral-200">
                         {m.watchedBy.join(", ")}
                       </span>
                     </>
@@ -430,8 +430,8 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                   aria-pressed={haveWatched(m)}
                   className={`absolute bottom-1 left-1 flex h-8 w-8 items-center justify-center rounded-lg ${
                     haveWatched(m)
-                      ? "bg-emerald-500 text-neutral-950"
-                      : "bg-neutral-950/85 text-neutral-400"
+                      ? "bg-neutral-900/90 text-white"
+                      : "bg-neutral-950/85 text-neutral-600"
                   }`}
                 >
                   <CheckIcon />
@@ -579,8 +579,8 @@ function WatchedButton({
       aria-pressed={watched}
       className={`h-9 w-9 rounded-lg border ${
         watched
-          ? "border-emerald-500 bg-emerald-500 text-neutral-950"
-          : "border-neutral-700 text-neutral-500"
+          ? "border-neutral-200 text-white"
+          : "border-neutral-700 text-neutral-600"
       }`}
     >
       <CheckIcon />
