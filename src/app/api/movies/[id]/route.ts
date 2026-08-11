@@ -1,18 +1,29 @@
 import { NextResponse } from "next/server";
 import { deleteMovie } from "@/lib/store";
 
+/**
+ * Deliberately unauthenticated: the link only lives in a private group chat,
+ * and gating deletes behind a token made one person the bottleneck for every
+ * wrong-Batman correction. The confirm step lives in the UI. There is no undo,
+ * so if this ever leaks beyond the group, put the token check back.
+ */
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const token = request.headers.get("x-admin-token");
-  if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
-    return NextResponse.json({ error: "Nope." }, { status: 401 });
-  }
-
   const { id } = await params;
-  const removed = await deleteMovie(id);
-  if (!removed) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  return NextResponse.json({ ok: true });
+  try {
+    const removed = await deleteMovie(id);
+    if (!removed) {
+      return NextResponse.json({ error: "Not found." }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("delete failed", error);
+    return NextResponse.json(
+      { error: "Could not remove that one." },
+      { status: 502 }
+    );
+  }
 }

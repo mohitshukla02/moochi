@@ -11,6 +11,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "grid">("list");
+  const [editing, setEditing] = useState(false);
 
   // The page is server-rendered, so localStorage cannot be read during render
   // or in a lazy useState initializer without causing a hydration mismatch
@@ -72,13 +73,33 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
     }
   }
 
+  async function remove(movie: Movie) {
+    // No undo — the row is gone from Redis. This confirm is the only guard.
+    if (!window.confirm(`Remove ${movie.title}?`)) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/movies/${movie.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Could not remove that one.");
+      }
+      setMovies((current) => current.filter((m) => m.id !== movie.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove that one.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="mx-auto max-w-xl p-4">
       <div className="sticky top-0 z-10 space-y-2 bg-neutral-950 pb-3 pt-2">
         <h1 className="font-display text-2xl">MOOCHI</h1>
 
         <input
-          className="w-full rounded border border-neutral-700 bg-neutral-900 p-3"
+          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 p-3"
           placeholder="Your name"
           value={name}
           onChange={(e) => saveName(e.target.value)}
@@ -86,7 +107,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
 
         <form onSubmit={search} className="flex gap-2">
           <input
-            className="min-w-0 flex-1 rounded border border-neutral-700 bg-neutral-900 p-3"
+            className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-900 p-3"
             placeholder="Search a movie"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -94,7 +115,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
           <button
             type="submit"
             disabled={busy}
-            className="rounded bg-neutral-100 px-4 font-medium text-neutral-900 disabled:opacity-50"
+            className="rounded-lg bg-neutral-100 px-4 font-medium text-neutral-900 disabled:opacity-50"
           >
             Go
           </button>
@@ -110,7 +131,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
               <button
                 onClick={() => add(r)}
                 disabled={busy}
-                className="flex w-full items-center gap-3 rounded border border-neutral-800 p-2 text-left disabled:opacity-50"
+                className="flex w-full items-center gap-3 rounded-lg border border-neutral-800 p-2 text-left disabled:opacity-50"
               >
                 <Poster src={r.poster} title={r.title} />
                 <span>
@@ -129,21 +150,37 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
             {movies.length} {movies.length === 1 ? "title" : "titles"}
           </p>
         </div>
-        <div className="flex shrink-0 overflow-hidden rounded border border-neutral-700">
-          <ViewButton
-            active={view === "list"}
-            onClick={() => setView("list")}
-            label="List view"
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setEditing(!editing)}
+            aria-label="Edit mode"
+            aria-pressed={editing}
+            className={`rounded-lg border p-2.5 ${
+              editing
+                ? "border-neutral-100 bg-neutral-100 text-neutral-900"
+                : "border-neutral-700 text-neutral-400"
+            }`}
           >
-            <ListIcon />
-          </ViewButton>
-          <ViewButton
-            active={view === "grid"}
-            onClick={() => setView("grid")}
-            label="Grid view"
-          >
-            <GridIcon />
-          </ViewButton>
+            <PencilIcon />
+          </button>
+
+          <div className="flex overflow-hidden rounded-lg border border-neutral-700">
+            <ViewButton
+              active={view === "list"}
+              onClick={() => setView("list")}
+              label="List view"
+            >
+              <ListIcon />
+            </ViewButton>
+            <ViewButton
+              active={view === "grid"}
+              onClick={() => setView("grid")}
+              label="Grid view"
+            >
+              <GridIcon />
+            </ViewButton>
+          </div>
         </div>
       </div>
 
@@ -152,7 +189,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
           {movies.map((m) => (
             <li key={m.id} className="flex gap-3 border-t border-neutral-800 pt-3">
               <Poster src={m.poster} title={m.title} />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="font-medium">
                   {m.title} <span className="text-neutral-500">({m.year})</span>
                 </p>
@@ -169,6 +206,17 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                   </span>
                 </p>
               </div>
+              {editing && (
+                <button
+                  type="button"
+                  onClick={() => remove(m)}
+                  disabled={busy}
+                  aria-label={`Remove ${m.title}`}
+                  className="h-9 w-9 shrink-0 self-center rounded-lg border border-red-900 text-red-400 disabled:opacity-50"
+                >
+                  <CrossIcon />
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -179,7 +227,20 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
         <ul className="grid grid-cols-2 gap-4 min-[360px]:grid-cols-3 min-[360px]:gap-3">
           {movies.map((m) => (
             <li key={m.id} className="min-w-0">
-              <Poster src={m.poster} title={m.title} variant="grid" />
+              <div className="relative">
+                <Poster src={m.poster} title={m.title} variant="grid" />
+                {editing && (
+                  <button
+                    type="button"
+                    onClick={() => remove(m)}
+                    disabled={busy}
+                    aria-label={`Remove ${m.title}`}
+                    className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-950/85 text-red-400 disabled:opacity-50"
+                  >
+                    <CrossIcon />
+                  </button>
+                )}
+              </div>
               <p className="mt-1.5 truncate text-sm font-medium">{m.title}</p>
               {/* Sat next to the year rather than pushed to the far edge —
                   justify-between left a distracting gap in a narrow cell. */}
@@ -285,6 +346,24 @@ function GridIcon() {
   );
 }
 
+function PencilIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+      <path d="m15 5 4 4" />
+    </svg>
+  );
+}
+
+function CrossIcon() {
+  return (
+    <svg {...iconProps} className="mx-auto">
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  );
+}
+
 // Height is per-source, not shared: the IMDb mark is a wide, short rectangle
 // while the tomato is roughly square, so equal heights make IMDb read far
 // smaller. These are literal class strings so Tailwind picks them up.
@@ -386,7 +465,7 @@ function Poster({
   if (!src) {
     return (
       <div
-        className={`${box} flex items-center justify-center rounded bg-neutral-800 p-1 text-center text-[9px] text-neutral-500`}
+        className={`${box} flex items-center justify-center rounded-lg bg-neutral-800 p-1 text-center text-[9px] text-neutral-500`}
       >
         {title}
       </div>
@@ -398,7 +477,7 @@ function Poster({
       src={src}
       alt=""
       loading="lazy"
-      className={`${box} rounded object-cover`}
+      className={`${box} rounded-lg object-cover`}
     />
   );
 }
