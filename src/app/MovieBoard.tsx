@@ -160,7 +160,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                 <p className="font-medium">
                   {m.title} <span className="text-neutral-500">({m.year})</span>
                 </p>
-                <p className="text-xs text-neutral-500">
+                <p className="text-sm text-neutral-500">
                   {[m.runtime, m.director].filter(Boolean).join(" · ")}
                 </p>
                 <p className="mt-1 text-sm text-neutral-400">
@@ -185,14 +185,11 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
               <Poster src={m.poster} title={m.title} variant="grid" />
               <p className="mt-1.5 truncate text-sm font-medium">{m.title}</p>
               <p className="text-xs text-neutral-500">{m.year}</p>
-              <p className="mt-0.5 text-xs text-neutral-400">
-                <RatingBadges ratings={m.ratings} />
-              </p>
-              <p className="mt-1 text-xs text-neutral-500">
-                added by{" "}
-                <span className="text-neutral-200">
-                  {m.addedBy}
-                </span>
+              {/* No ratings here on purpose: it was the only variable-height
+                  element in a cell, so it made the rows ragged. Ratings live
+                  in the list view. */}
+              <p className="truncate text-xs text-neutral-500">
+                added by <span className="text-neutral-200">{m.addedBy}</span>
               </p>
             </li>
           ))}
