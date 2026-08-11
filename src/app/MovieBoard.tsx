@@ -629,6 +629,7 @@ function MovieModal({
     };
   }, [onClose]);
 
+  const oscars = oscarWins(movie.awards);
   const added = new Date(movie.addedAt);
   const addedLabel = Number.isNaN(added.getTime())
     ? null
@@ -665,29 +666,31 @@ function MovieModal({
           </button>
         </div>
 
-        <div className="flex gap-4">
-          {/* Half the panel width — the poster is the point of the sheet. */}
+        {/* Title block sits above the poster, left aligned. */}
+        <h3 className="font-tight text-lg font-semibold leading-tight">
+          {movie.title}
+        </h3>
+        <p className="mt-1 text-sm text-neutral-500">
+          {[movie.released ?? movie.year, movie.rated].filter(Boolean).join(" · ")}
+        </p>
+        {movie.genre && (
+          <p className="mt-2 text-sm leading-snug text-neutral-400">
+            {movie.genre}
+          </p>
+        )}
+        <p className="mt-2 text-sm text-neutral-400">
+          <RatingBadges ratings={movie.ratings} />
+        </p>
+
+        <div className="mt-3 flex items-start gap-3">
           <div className="w-1/2 shrink-0">
             <Poster src={movie.poster} title={movie.title} variant="grid" />
           </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="font-tight text-lg font-semibold leading-tight">
-              {movie.title}
-            </h3>
-            <p className="mt-1 text-sm text-neutral-500">
-              {[movie.released ?? movie.year, movie.rated]
-                .filter(Boolean)
-                .join(" · ")}
+          {oscars !== null && (
+            <p className="rounded-lg border border-amber-700/60 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium leading-snug text-amber-300">
+              Won {oscars} Oscar{oscars === 1 ? "" : "s"}
             </p>
-            {movie.genre && (
-              <p className="mt-2 text-sm leading-snug text-neutral-400">
-                {movie.genre}
-              </p>
-            )}
-            <p className="mt-2 text-sm text-neutral-400">
-              <RatingBadges ratings={movie.ratings} />
-            </p>
-          </div>
+          )}
         </div>
 
         <p className="mt-4 text-sm leading-relaxed text-neutral-300">
@@ -697,11 +700,8 @@ function MovieModal({
         <dl className="mt-4 space-y-1.5 border-t border-neutral-800 pt-3 text-xs text-neutral-500">
           <Fact label="Director" value={movie.director} />
           <Fact label="Cast" value={movie.actors} />
-          <Fact label="Writer" value={movie.writer} />
           <Fact label="Runtime" value={movie.runtime} />
-          <Fact label="Country" value={movie.country} />
           <Fact label="Language" value={movie.language} />
-          <Fact label="Box office" value={movie.boxOffice} />
           <Fact label="Awards" value={movie.awards} />
           <Fact
             label="Added by"
@@ -721,6 +721,17 @@ function MovieModal({
       </div>
     </div>
   );
+}
+
+/**
+ * Oscar wins pulled out of OMDb's freeform awards string, which reads like
+ * "Won 3 Oscars. 163 wins & 165 nominations total". Returns null when the film
+ * only has nominations, or no awards line at all.
+ */
+function oscarWins(awards: string | null | undefined): number | null {
+  if (!awards) return null;
+  const match = awards.match(/Won (\d+) Oscars?/i);
+  return match ? Number(match[1]) : null;
 }
 
 /** One label/value row. Renders nothing when the value is absent, so records
