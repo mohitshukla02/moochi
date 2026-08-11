@@ -180,11 +180,13 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
             <li key={m.id} className="min-w-0">
               <Poster src={m.poster} title={m.title} variant="grid" />
               <p className="mt-1.5 truncate text-sm font-medium">{m.title}</p>
-              {/* Year left, runtime right. Runtime is shrink-0 so it always
-                  gets its space; the year truncates first if a cell is tight. */}
-              <p className="flex items-baseline justify-between gap-1 text-xs text-neutral-500">
-                <span className="truncate">{m.year}</span>
-                {m.runtime && <span className="shrink-0">{m.runtime}</span>}
+              {/* Sat next to the year rather than pushed to the far edge —
+                  justify-between left a distracting gap in a narrow cell. */}
+              <p className="flex items-baseline gap-2 text-xs text-neutral-500">
+                <span>{m.year}</span>
+                {m.runtime && (
+                  <span className="shrink-0">{shortRuntime(m.runtime)}</span>
+                )}
               </p>
               {/* No ratings here on purpose: it was the only variable-height
                   element in a cell, so it made the rows ragged. Ratings live
@@ -272,6 +274,11 @@ function GridIcon() {
 // Height is per-source, not shared: the IMDb mark is a wide, short rectangle
 // while the tomato is roughly square, so equal heights make IMDb read far
 // smaller. These are literal class strings so Tailwind picks them up.
+/** "154 min" -> "154m", for the narrow grid cells. Anything else passes through. */
+function shortRuntime(runtime: string): string {
+  return runtime.replace(/\s*min$/, "m");
+}
+
 type Badge = { src: string; alt: string; value: string; size: string };
 
 /**
