@@ -650,10 +650,13 @@ function MovieModal({
         aria-modal="true"
         aria-label={movie.title}
         onClick={(e) => e.stopPropagation()}
-        className="animate-panel-in relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-neutral-800 bg-neutral-950 p-4"
+        className="animate-panel-in relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-3xl border border-neutral-800 bg-neutral-950 p-4"
       >
-        {/* Title and close share the top line, both hugging their own edge. */}
-        <div className="flex items-start justify-between gap-3">
+        {/* Title and close share the top line, both hugging their own edge.
+            items-center rather than items-start: the button is 36px tall and
+            the title's line box is ~22px, so aligning tops left the text
+            sitting visibly high against the icon. */}
+        <div className="flex items-center justify-between gap-3">
           <h3 className="font-tight min-w-0 text-lg font-semibold leading-tight">
             {movie.title}
           </h3>
@@ -662,7 +665,7 @@ function MovieModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="-mr-1 -mt-1 h-9 w-9 shrink-0 rounded-lg text-neutral-400"
+            className="-mr-1 h-9 w-9 shrink-0 rounded-lg text-neutral-400"
           >
             <CrossIcon />
           </button>
