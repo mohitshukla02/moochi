@@ -160,11 +160,11 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                 <p className="font-medium">
                   {m.title} <span className="text-neutral-500">({m.year})</span>
                 </p>
-                <p className="text-sm text-neutral-400">
-                  <RatingBadges ratings={m.ratings} />
-                </p>
                 <p className="text-xs text-neutral-500">
                   {[m.runtime, m.director].filter(Boolean).join(" · ")}
+                </p>
+                <p className="mt-1 text-sm text-neutral-400">
+                  <RatingBadges ratings={m.ratings} />
                 </p>
                 <p className="mt-1 text-xs text-neutral-500">
                   added by{" "}
