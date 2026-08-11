@@ -184,13 +184,26 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                   justify-between left a distracting gap in a narrow cell. */}
               <p className="flex items-baseline gap-2 text-xs text-neutral-500">
                 <span>{m.year}</span>
-                {m.runtime && (
-                  <span className="shrink-0">{shortRuntime(m.runtime)}</span>
-                )}
+                {m.runtime && <span className="shrink-0">{m.runtime}</span>}
               </p>
-              {/* No ratings here on purpose: it was the only variable-height
-                  element in a cell, so it made the rows ragged. Ratings live
-                  in the list view. */}
+              {/* Two fixed slots, IMDb left and Rotten Tomatoes right, with a
+                  min height so the row still occupies a line when a score is
+                  missing. That is what keeps every cell the same height —
+                  the earlier free-flowing version made the rows ragged. */}
+              <p className="mt-0.5 flex min-h-[1.5em] items-center justify-between gap-1 text-xs text-neutral-400">
+                <GridScore
+                  src="/icon-imdb.png"
+                  alt="IMDb"
+                  size="h-[1.65em]"
+                  value={m.ratings.imdb?.replace("/10", "")}
+                />
+                <GridScore
+                  src="/icon-rottentomatoes.webp"
+                  alt="Rotten Tomatoes"
+                  size="h-[0.95em]"
+                  value={m.ratings.rt}
+                />
+              </p>
               <p className="truncate text-xs text-neutral-500">
                 added by <span className="text-neutral-200">{m.addedBy}</span>
               </p>
@@ -274,9 +287,35 @@ function GridIcon() {
 // Height is per-source, not shared: the IMDb mark is a wide, short rectangle
 // while the tomato is roughly square, so equal heights make IMDb read far
 // smaller. These are literal class strings so Tailwind picks them up.
-/** "154 min" -> "154m", for the narrow grid cells. Anything else passes through. */
-function shortRuntime(runtime: string): string {
-  return runtime.replace(/\s*min$/, "m");
+/**
+ * One score slot in a grid cell. Renders nothing but still holds its place in
+ * the flex row when the score is absent, so the two slots stay pinned left and
+ * right and the cell height never changes.
+ */
+function GridScore({
+  src,
+  alt,
+  size,
+  value,
+}: {
+  src: string;
+  alt: string;
+  size: string;
+  value: string | null | undefined;
+}) {
+  if (!value) return <span aria-hidden />;
+  return (
+    <span className="inline-flex items-center gap-1">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        title={alt}
+        className={`${size} w-auto shrink-0 object-contain`}
+      />
+      {value}
+    </span>
+  );
 }
 
 type Badge = { src: string; alt: string; value: string; size: string };
