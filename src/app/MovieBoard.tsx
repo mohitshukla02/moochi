@@ -75,11 +75,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
   return (
     <main className="mx-auto max-w-xl p-4">
       <div className="sticky top-0 z-10 space-y-2 bg-neutral-950 pb-3 pt-2">
-        <h1 className="flex items-center gap-2 font-display text-2xl">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/moochi-icon.png" alt="" className="h-7 w-7 shrink-0" />
-          Moochi
-        </h1>
+        <h1 className="font-display text-2xl">MOOCHI</h1>
 
         <input
           className="w-full rounded border border-neutral-700 bg-neutral-900 p-3"
@@ -163,7 +159,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                 <p className="text-sm text-neutral-500">
                   {[m.runtime, m.director].filter(Boolean).join(" · ")}
                 </p>
-                <p className="mt-1 text-sm text-neutral-400">
+                <p className="mt-1 text-xs text-neutral-400">
                   <RatingBadges ratings={m.ratings} />
                 </p>
                 <p className="mt-1 text-xs text-neutral-500">
@@ -184,7 +180,12 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
             <li key={m.id} className="min-w-0">
               <Poster src={m.poster} title={m.title} variant="grid" />
               <p className="mt-1.5 truncate text-sm font-medium">{m.title}</p>
-              <p className="text-xs text-neutral-500">{m.year}</p>
+              {/* Year left, runtime right. Runtime is shrink-0 so it always
+                  gets its space; the year truncates first if a cell is tight. */}
+              <p className="flex items-baseline justify-between gap-1 text-xs text-neutral-500">
+                <span className="truncate">{m.year}</span>
+                {m.runtime && <span className="shrink-0">{m.runtime}</span>}
+              </p>
               {/* No ratings here on purpose: it was the only variable-height
                   element in a cell, so it made the rows ragged. Ratings live
                   in the list view. */}
