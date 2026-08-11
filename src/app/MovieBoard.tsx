@@ -75,7 +75,11 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
   return (
     <main className="mx-auto max-w-xl p-4">
       <div className="sticky top-0 z-10 space-y-2 bg-neutral-950 pb-3 pt-2">
-        <h1 className="text-xl font-bold">Moochi</h1>
+        <h1 className="flex items-center gap-2 font-display text-2xl">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/moochi-icon.png" alt="" className="h-7 w-7 shrink-0" />
+          Moochi
+        </h1>
 
         <input
           className="w-full rounded border border-neutral-700 bg-neutral-900 p-3"
@@ -124,7 +128,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
 
       <div className="mb-3 flex items-end justify-between gap-3 border-b border-neutral-800 pb-2">
         <div>
-          <h2 className="text-lg font-semibold">Must watch</h2>
+          <h2 className="font-tight text-lg font-semibold">Must watch</h2>
           <p className="text-xs text-neutral-500">
             {movies.length} {movies.length === 1 ? "title" : "titles"}
           </p>
@@ -156,13 +160,15 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                 <p className="font-medium">
                   {m.title} <span className="text-neutral-500">({m.year})</span>
                 </p>
-                <p className="text-sm text-neutral-400">{ratingLine(m)}</p>
+                <p className="text-sm text-neutral-400">
+                  <RatingBadges ratings={m.ratings} />
+                </p>
                 <p className="text-xs text-neutral-500">
                   {[m.runtime, m.director].filter(Boolean).join(" · ")}
                 </p>
                 <p className="mt-1 text-xs text-neutral-500">
                   added by{" "}
-                  <span className="font-semibold text-neutral-200">
+                  <span className="text-neutral-200">
                     {m.addedBy}
                   </span>
                 </p>
@@ -179,10 +185,12 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
               <Poster src={m.poster} title={m.title} variant="grid" />
               <p className="mt-1.5 truncate text-sm font-medium">{m.title}</p>
               <p className="text-xs text-neutral-500">{m.year}</p>
-              <p className="mt-0.5 text-xs text-neutral-400">{ratingLine(m)}</p>
+              <p className="mt-0.5 text-xs text-neutral-400">
+                <RatingBadges ratings={m.ratings} />
+              </p>
               <p className="mt-1 text-xs text-neutral-500">
                 added by{" "}
-                <span className="font-semibold text-neutral-200">
+                <span className="text-neutral-200">
                   {m.addedBy}
                 </span>
               </p>
@@ -263,16 +271,49 @@ function GridIcon() {
   );
 }
 
-/** Whichever of the three ratings exist, joined. Any of them can be missing. */
-function ratingLine(m: Movie): string {
+type Badge = { src: string; alt: string; value: string };
+
+/**
+ * Whichever of the three ratings exist, each with its source's logo. Any of
+ * them can be missing — Rotten Tomatoes especially, on series and older films.
+ * Icons are sized in `em` so they track whatever font size the caller sets.
+ */
+function RatingBadges({ ratings }: { ratings: Movie["ratings"] }) {
+  const badges: Badge[] = [];
+  if (ratings.imdb)
+    badges.push({ src: "/icon-imdb.png", alt: "IMDb", value: ratings.imdb });
+  if (ratings.rt)
+    badges.push({
+      src: "/icon-rottentomatoes.png",
+      alt: "Rotten Tomatoes",
+      value: ratings.rt,
+    });
+  if (ratings.metacritic)
+    badges.push({
+      src: "/icon-metacritic.png",
+      alt: "Metacritic",
+      value: ratings.metacritic,
+    });
+
+  if (badges.length === 0) {
+    return <span className="text-neutral-500">No ratings</span>;
+  }
+
   return (
-    [
-      m.ratings.imdb && `IMDb ${m.ratings.imdb}`,
-      m.ratings.rt && `RT ${m.ratings.rt}`,
-      m.ratings.metacritic && `MC ${m.ratings.metacritic}`,
-    ]
-      .filter(Boolean)
-      .join("  ·  ") || "No ratings"
+    <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+      {badges.map((b) => (
+        <span key={b.alt} className="inline-flex items-center gap-1">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={b.src}
+            alt={b.alt}
+            title={b.alt}
+            className="h-[1.1em] w-auto shrink-0 object-contain"
+          />
+          {b.value}
+        </span>
+      ))}
+    </span>
   );
 }
 
