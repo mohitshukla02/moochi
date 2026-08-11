@@ -1,6 +1,10 @@
 node_modules
 .next
-.env.local
 .vercel
 next-env.d.ts
 tsconfig.tsbuildinfo
+
+# Real secrets stay local; the example template is committed on purpose.
+.env
+.env.*
+!.env.local.example
