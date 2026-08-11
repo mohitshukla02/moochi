@@ -12,21 +12,37 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "grid">("list");
   const [editing, setEditing] = useState(false);
+  const [draftName, setDraftName] = useState("");
+  const [renaming, setRenaming] = useState(false);
+  // Until the stored name has been read we cannot tell a first-time visitor
+  // from a returning one, and guessing would flash the wrong control. `ready`
+  // holds the header in a neutral state for that one render.
+  const [ready, setReady] = useState(false);
 
   // The page is server-rendered, so localStorage cannot be read during render
   // or in a lazy useState initializer without causing a hydration mismatch
   // (server emits an empty field, client would emit the stored name). Reading
-  // it in a mount effect is the correct trade-off here: one extra render on
-  // load, and the field fills in immediately.
+  // it in a mount effect is the correct trade-off here.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setName(localStorage.getItem("moochi-name") ?? "");
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const stored = localStorage.getItem("moochi-name") ?? "";
+    setName(stored);
+    setDraftName(stored);
+    setReady(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
-  function saveName(value: string) {
+  function submitName(event: React.FormEvent) {
+    event.preventDefault();
+    const value = draftName.trim().slice(0, 40);
+    if (!value) return;
     setName(value);
     localStorage.setItem("moochi-name", value);
+    setRenaming(false);
+    setError(null);
   }
+
+  const askingName = ready && (!name || renaming);
 
   async function search(event: React.FormEvent) {
     event.preventDefault();
@@ -96,30 +112,62 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
   return (
     <main className="mx-auto max-w-xl p-4">
       <div className="sticky top-0 z-10 space-y-2 bg-neutral-950 pb-3 pt-2">
-        <h1 className="font-display text-2xl">MOOCHI</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-display text-2xl">MOOCHI</h1>
+          {ready && name && !renaming && (
+            <button
+              type="button"
+              onClick={() => {
+                setDraftName(name);
+                setRenaming(true);
+              }}
+              aria-label={`Signed in as ${name}. Change name.`}
+              className="min-w-0 truncate rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300"
+            >
+              {name}
+            </button>
+          )}
+        </div>
 
-        <input
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 p-3"
-          placeholder="Your name"
-          value={name}
-          onChange={(e) => saveName(e.target.value)}
-        />
-
-        <form onSubmit={search} className="flex gap-2">
-          <input
-            className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-900 p-3"
-            placeholder="Search a movie"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-lg bg-neutral-100 px-4 font-medium text-neutral-900 disabled:opacity-50"
-          >
-            Go
-          </button>
-        </form>
+        {/* One control, not two: the name is asked for once and then lives in
+            the header, which buys back a whole row of vertical space. The
+            fixed-height shell keeps the layout from jumping on first paint,
+            before the stored name has been read. */}
+        <div className="min-h-[50px]">
+          {askingName ? (
+            <form onSubmit={submitName} className="flex gap-2">
+              <input
+                className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-900 p-3"
+                placeholder="Your name"
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                autoFocus
+              />
+              <button
+                type="submit"
+                className="rounded-lg bg-neutral-100 px-4 font-medium text-neutral-900"
+              >
+                Save
+              </button>
+            </form>
+          ) : ready ? (
+            <form onSubmit={search} className="flex gap-2">
+              <input
+                className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-900 p-3"
+                placeholder="Find movie"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <button
+                type="submit"
+                disabled={busy}
+                className="rounded-lg bg-neutral-100 px-4 font-medium text-neutral-900 disabled:opacity-50"
+              >
+                Go
+              </button>
+            </form>
+          ) : null}
+        </div>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
       </div>
