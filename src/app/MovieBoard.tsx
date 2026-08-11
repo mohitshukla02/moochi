@@ -271,7 +271,10 @@ function GridIcon() {
   );
 }
 
-type Badge = { src: string; alt: string; value: string };
+// Height is per-source, not shared: the IMDb mark is a wide, short rectangle
+// while the tomato is roughly square, so equal heights make IMDb read far
+// smaller. These are literal class strings so Tailwind picks them up.
+type Badge = { src: string; alt: string; value: string; size: string };
 
 /**
  * IMDb and Rotten Tomatoes only. Metacritic is still captured and stored by
@@ -284,12 +287,18 @@ type Badge = { src: string; alt: string; value: string };
 function RatingBadges({ ratings }: { ratings: Movie["ratings"] }) {
   const badges: Badge[] = [];
   if (ratings.imdb)
-    badges.push({ src: "/icon-imdb.png", alt: "IMDb", value: ratings.imdb });
+    badges.push({
+      src: "/icon-imdb.png",
+      alt: "IMDb",
+      value: ratings.imdb,
+      size: "h-[1.65em]",
+    });
   if (ratings.rt)
     badges.push({
       src: "/icon-rottentomatoes.webp",
       alt: "Rotten Tomatoes",
       value: ratings.rt,
+      size: "h-[0.95em]",
     });
 
   if (badges.length === 0) {
@@ -305,7 +314,7 @@ function RatingBadges({ ratings }: { ratings: Movie["ratings"] }) {
             src={b.src}
             alt={b.alt}
             title={b.alt}
-            className="h-[1.1em] w-auto shrink-0 object-contain"
+            className={`${b.size} w-auto shrink-0 object-contain`}
           />
           {b.value}
         </span>
