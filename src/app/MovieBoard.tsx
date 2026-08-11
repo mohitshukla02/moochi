@@ -10,6 +10,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
   const [movies, setMovies] = useState<Movie[]>(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<"list" | "grid">("list");
 
   // The page is server-rendered, so localStorage cannot be read during render
   // or in a lazy useState initializer without causing a hydration mismatch
@@ -121,31 +122,64 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
         </ul>
       )}
 
-      <ul className="space-y-3">
-        {movies.map((m) => (
-          <li key={m.id} className="flex gap-3 border-t border-neutral-800 pt-3">
-            <Poster src={m.poster} title={m.title} />
-            <div className="min-w-0">
-              <p className="font-medium">
-                {m.title} <span className="text-neutral-500">({m.year})</span>
+      <div className="mb-3 flex items-end justify-between gap-3 border-b border-neutral-800 pb-2">
+        <div>
+          <h2 className="text-lg font-semibold">Must watch</h2>
+          <p className="text-xs text-neutral-500">
+            {movies.length} {movies.length === 1 ? "title" : "titles"}
+          </p>
+        </div>
+        <button
+          onClick={() => setView(view === "list" ? "grid" : "list")}
+          className="shrink-0 rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300"
+        >
+          {view === "list" ? "Grid" : "List"}
+        </button>
+      </div>
+
+      {view === "list" ? (
+        <ul className="space-y-3">
+          {movies.map((m) => (
+            <li key={m.id} className="flex gap-3 border-t border-neutral-800 pt-3">
+              <Poster src={m.poster} title={m.title} />
+              <div className="min-w-0">
+                <p className="font-medium">
+                  {m.title} <span className="text-neutral-500">({m.year})</span>
+                </p>
+                <p className="text-sm text-neutral-400">{ratingLine(m)}</p>
+                <p className="text-xs text-neutral-500">
+                  {[m.runtime, m.director].filter(Boolean).join(" · ")}
+                </p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  added by{" "}
+                  <span className="font-semibold text-neutral-200">
+                    {m.addedBy}
+                  </span>
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        // Capped at 3 across at every width — more than that makes posters
+        // too small to recognise on a phone.
+        <ul className="grid grid-cols-3 gap-3">
+          {movies.map((m) => (
+            <li key={m.id} className="min-w-0">
+              <Poster src={m.poster} title={m.title} variant="grid" />
+              <p className="mt-1.5 truncate text-sm font-medium">{m.title}</p>
+              <p className="text-xs text-neutral-500">{m.year}</p>
+              <p className="mt-0.5 text-xs text-neutral-400">{ratingLine(m)}</p>
+              <p className="mt-1 text-xs text-neutral-500">
+                added by{" "}
+                <span className="font-semibold text-neutral-200">
+                  {m.addedBy}
+                </span>
               </p>
-              <p className="text-sm text-neutral-400">
-                {[
-                  m.ratings.imdb && `IMDb ${m.ratings.imdb}`,
-                  m.ratings.rt && `RT ${m.ratings.rt}`,
-                  m.ratings.metacritic && `MC ${m.ratings.metacritic}`,
-                ]
-                  .filter(Boolean)
-                  .join("  ·  ") || "No ratings"}
-              </p>
-              <p className="text-xs text-neutral-500">
-                {[m.runtime, m.director].filter(Boolean).join(" · ")}
-              </p>
-              <p className="mt-1 text-xs text-neutral-600">added by {m.addedBy}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {movies.length === 0 && (
         <p className="text-neutral-500">Nothing on the list yet.</p>
@@ -154,10 +188,39 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
   );
 }
 
-function Poster({ src, title }: { src: string | null; title: string }) {
+/** Whichever of the three ratings exist, joined. Any of them can be missing. */
+function ratingLine(m: Movie): string {
+  return (
+    [
+      m.ratings.imdb && `IMDb ${m.ratings.imdb}`,
+      m.ratings.rt && `RT ${m.ratings.rt}`,
+      m.ratings.metacritic && `MC ${m.ratings.metacritic}`,
+    ]
+      .filter(Boolean)
+      .join("  ·  ") || "No ratings"
+  );
+}
+
+function Poster({
+  src,
+  title,
+  variant = "row",
+}: {
+  src: string | null;
+  title: string;
+  variant?: "row" | "grid";
+}) {
+  // Row: a fixed thumbnail beside text. Grid: fills its cell at poster ratio.
+  const box =
+    variant === "grid"
+      ? "w-full aspect-[2/3]"
+      : "h-[81px] w-[54px] shrink-0";
+
   if (!src) {
     return (
-      <div className="flex h-[81px] w-[54px] shrink-0 items-center justify-center rounded bg-neutral-800 p-1 text-center text-[9px] text-neutral-500">
+      <div
+        className={`${box} flex items-center justify-center rounded bg-neutral-800 p-1 text-center text-[9px] text-neutral-500`}
+      >
         {title}
       </div>
     );
@@ -168,7 +231,7 @@ function Poster({ src, title }: { src: string | null; title: string }) {
       src={src}
       alt=""
       loading="lazy"
-      className="h-[81px] w-[54px] shrink-0 rounded object-cover"
+      className={`${box} rounded object-cover`}
     />
   );
 }
