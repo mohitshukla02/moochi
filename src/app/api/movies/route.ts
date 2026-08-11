@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchMovie } from "@/lib/omdb";
-import { addMovie, hasMovie, listMovies } from "@/lib/store";
+import { addMovie, hasMovie, isRateLimited, listMovies } from "@/lib/store";
 
 export async function GET() {
   try {
@@ -30,6 +30,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Enter your name first." }, { status: 400 });
 
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] ?? "local";
+    if (await isRateLimited(ip)) {
+      return NextResponse.json({ error: "Slow down a bit." }, { status: 429 });
+    }
+
     const existing = await hasMovie(id);
     if (existing) {
       return NextResponse.json(

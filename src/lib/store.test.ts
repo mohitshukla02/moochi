@@ -83,4 +83,78 @@ describe("store (in-memory fallback)", () => {
 
     expect(await listMovies()).toEqual([]);
   });
+
+  it("deleteMovie removes only the target middle movie, leaving the others intact and in order", async () => {
+    // Uses FOUR movies (not three) so the target's raw storage index differs
+    // from its reversed/display index. With three movies the middle element
+    // sits at the same index in both orderings, so a bug that fed the
+    // display-order index straight into LSET (instead of converting back to
+    // raw order) would coincidentally still delete the right entry and this
+    // test would pass even though the code is broken. With four movies,
+    // "tt2" is at raw index 1 but display index 2 -- if the implementation
+    // used the wrong ordering, it would delete "tt3" instead, which this
+    // test's exact-order assertion catches.
+    const { addMovie, deleteMovie, listMovies } = await import("./store");
+    const first = movie("tt1", "First");
+    const second = movie("tt2", "Second");
+    const third = movie("tt3", "Third");
+    const fourth = movie("tt4", "Fourth");
+
+    await addMovie(first);
+    await addMovie(second);
+    await addMovie(third);
+    await addMovie(fourth);
+
+    const result = await deleteMovie("tt2");
+    const all = await listMovies();
+
+    expect(result).toBe(true);
+    expect(all.map((m) => m.id)).toEqual(["tt4", "tt3", "tt1"]);
+  });
+
+  it("deleteMovie removes the newest movie (last one added) correctly", async () => {
+    const { addMovie, deleteMovie, listMovies } = await import("./store");
+    const first = movie("tt1", "First");
+    const second = movie("tt2", "Second");
+    const third = movie("tt3", "Third");
+
+    await addMovie(first);
+    await addMovie(second);
+    await addMovie(third);
+
+    const result = await deleteMovie("tt3");
+    const all = await listMovies();
+
+    expect(result).toBe(true);
+    expect(all.map((m) => m.id)).toEqual(["tt2", "tt1"]);
+  });
+
+  it("deleteMovie removes the oldest movie (first one added) correctly", async () => {
+    const { addMovie, deleteMovie, listMovies } = await import("./store");
+    const first = movie("tt1", "First");
+    const second = movie("tt2", "Second");
+    const third = movie("tt3", "Third");
+
+    await addMovie(first);
+    await addMovie(second);
+    await addMovie(third);
+
+    const result = await deleteMovie("tt1");
+    const all = await listMovies();
+
+    expect(result).toBe(true);
+    expect(all.map((m) => m.id)).toEqual(["tt3", "tt2"]);
+  });
+});
+
+describe("isRateLimited (in-memory fallback)", () => {
+  it("returns false for the first 10 calls and true on the 11th", async () => {
+    const { isRateLimited } = await import("./store");
+    const ip = "1.2.3.4";
+
+    for (let i = 0; i < 10; i++) {
+      expect(await isRateLimited(ip)).toBe(false);
+    }
+    expect(await isRateLimited(ip)).toBe(true);
+  });
 });

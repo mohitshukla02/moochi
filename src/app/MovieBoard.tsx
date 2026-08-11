@@ -11,7 +11,13 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // The page is server-rendered, so localStorage cannot be read during render
+  // or in a lazy useState initializer without causing a hydration mismatch
+  // (server emits an empty field, client would emit the stored name). Reading
+  // it in a mount effect is the correct trade-off here: one extra render on
+  // load, and the field fills in immediately.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setName(localStorage.getItem("moochi-name") ?? "");
   }, []);
 
