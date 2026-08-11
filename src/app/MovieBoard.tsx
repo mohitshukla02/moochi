@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Movie, SearchResult } from "@/lib/types";
 
 type Sort = "added" | "year-desc" | "year-asc" | "rating-desc";
@@ -55,6 +55,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
   // holds the header in a neutral state for that one render.
   const [ready, setReady] = useState(false);
   const [sort, setSort] = useState<Sort>("added");
+  const [detail, setDetail] = useState<Movie | null>(null);
 
   // "added" is the server's own order (newest first), so it needs no sorting.
   // Sort on a copy — reversing state in place would mutate it.
@@ -370,7 +371,14 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
               <Poster src={m.poster} title={m.title} />
               <div className="min-w-0 flex-1">
                 <p className="font-medium">
-                  {m.title} <span className="text-neutral-500">({m.year})</span>
+                  <button
+                    type="button"
+                    onClick={() => setDetail(m)}
+                    className="text-left underline-offset-2 hover:underline"
+                  >
+                    {m.title}
+                  </button>{" "}
+                  <span className="text-neutral-500">({m.year})</span>
                 </p>
                 <p className="text-sm text-neutral-500">
                   {[m.runtime, m.director].filter(Boolean).join(" · ")}
@@ -448,7 +456,13 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                   </button>
                 )}
               </div>
-              <p className="mt-1.5 truncate text-sm font-medium">{m.title}</p>
+              <button
+                type="button"
+                onClick={() => setDetail(m)}
+                className="mt-1.5 block w-full truncate text-left text-sm font-medium"
+              >
+                {m.title}
+              </button>
               {/* Sat next to the year rather than pushed to the far edge —
                   justify-between left a distracting gap in a narrow cell. */}
               <p className="flex items-baseline gap-2 text-xs text-neutral-500">
@@ -483,6 +497,16 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
 
       {movies.length === 0 && (
         <p className="text-neutral-500">Nothing on the list yet.</p>
+      )}
+
+      {detail && (
+        // Keyed by id so reopening a different movie remounts and replays the
+        // animation instead of swapping content inside a static panel.
+        <MovieModal
+          key={detail.id}
+          movie={movies.find((m) => m.id === detail.id) ?? detail}
+          onClose={() => setDetail(null)}
+        />
       )}
     </main>
   );
@@ -559,6 +583,110 @@ function PencilIcon() {
       <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
       <path d="m15 5 4 4" />
     </svg>
+  );
+}
+
+function MovieModal({
+  movie,
+  onClose,
+}: {
+  movie: Movie;
+  onClose: () => void;
+}) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+
+    // Stop the list behind from scrolling under the modal.
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [onClose]);
+
+  const added = new Date(movie.addedAt);
+  const addedLabel = Number.isNaN(added.getTime())
+    ? null
+    : added.toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+
+  return (
+    <div
+      className="animate-backdrop-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={movie.title}
+        onClick={(e) => e.stopPropagation()}
+        className="animate-panel-in max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-neutral-800 bg-neutral-950 p-4"
+      >
+        <div className="flex gap-3">
+          <Poster src={movie.poster} title={movie.title} />
+          <div className="min-w-0 flex-1">
+            <h3 className="font-tight text-lg font-semibold leading-tight">
+              {movie.title}{" "}
+              <span className="font-normal text-neutral-500">
+                ({movie.year})
+              </span>
+            </h3>
+            <p className="mt-1 text-sm text-neutral-500">
+              {[movie.runtime, movie.director].filter(Boolean).join(" · ") ||
+                "No runtime or director listed"}
+            </p>
+            <p className="mt-2 text-xs text-neutral-400">
+              <RatingBadges ratings={movie.ratings} />
+            </p>
+          </div>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="h-9 w-9 shrink-0 rounded-lg border border-neutral-700 text-neutral-400"
+          >
+            <CrossIcon />
+          </button>
+        </div>
+
+        <p className="mt-4 text-sm leading-relaxed text-neutral-300">
+          {movie.plot ?? "No synopsis available for this one."}
+        </p>
+
+        <dl className="mt-4 space-y-1 border-t border-neutral-800 pt-3 text-xs text-neutral-500">
+          <div className="flex gap-2">
+            <dt className="shrink-0">Added by</dt>
+            <dd className="text-neutral-200">
+              {movie.addedBy}
+              {addedLabel && (
+                <span className="text-neutral-500"> · {addedLabel}</span>
+              )}
+            </dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="shrink-0">Watched by</dt>
+            <dd className="text-neutral-200">
+              {movie.watchedBy.length > 0
+                ? movie.watchedBy.join(", ")
+                : "Nobody yet"}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
   );
 }
 
