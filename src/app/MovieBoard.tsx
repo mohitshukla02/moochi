@@ -368,7 +368,14 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
         <ul className="space-y-3">
           {sorted.map((m) => (
             <li key={m.id} className="flex gap-3 border-t border-neutral-800 pt-3">
-              <Poster src={m.poster} title={m.title} />
+              <button
+                type="button"
+                onClick={() => setDetail(m)}
+                aria-label={`Details for ${m.title}`}
+                className="shrink-0"
+              >
+                <Poster src={m.poster} title={m.title} />
+              </button>
               <div className="min-w-0 flex-1">
                 <p className="font-medium">
                   <button
@@ -428,7 +435,16 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
           {sorted.map((m) => (
             <li key={m.id} className="min-w-0">
               <div className="relative">
-                <Poster src={m.poster} title={m.title} variant="grid" />
+                {/* The overlay buttons are siblings, not children, so tapping
+                    them does not also open the modal. */}
+                <button
+                  type="button"
+                  onClick={() => setDetail(m)}
+                  aria-label={`Details for ${m.title}`}
+                  className="block w-full"
+                >
+                  <Poster src={m.poster} title={m.title} variant="grid" />
+                </button>
                 {/* Overlaid on the poster rather than added as another text
                     row, so marking watched cannot change the cell height. */}
                 <button
@@ -624,6 +640,7 @@ function MovieModal({
 
   return (
     <div
+      // Bottom sheet on phones, centred once there is room for it.
       className="animate-backdrop-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
       onClick={onClose}
     >
@@ -632,35 +649,43 @@ function MovieModal({
         aria-modal="true"
         aria-label={movie.title}
         onClick={(e) => e.stopPropagation()}
-        className="animate-panel-in max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-neutral-800 bg-neutral-950 p-4"
+        className="animate-panel-in relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-neutral-800 bg-neutral-950 p-4"
       >
-        <div className="flex gap-3">
-          <Poster src={movie.poster} title={movie.title} />
+        {/* Absolute so it does not eat width from an already narrow column. */}
+        <button
+          ref={closeRef}
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-3 top-3 z-10 h-9 w-9 rounded-lg border border-neutral-700 bg-neutral-950/80 text-neutral-400"
+        >
+          <CrossIcon />
+        </button>
+
+        <div className="flex gap-4">
+          {/* Half the panel width — the poster is the point of the sheet. */}
+          <div className="w-1/2 shrink-0">
+            <Poster src={movie.poster} title={movie.title} variant="grid" />
+          </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-tight text-lg font-semibold leading-tight">
-              {movie.title}{" "}
-              <span className="font-normal text-neutral-500">
-                ({movie.year})
-              </span>
+            {/* Only the title clears the close button; padding the whole
+                column would cost width the ratings and credits need. */}
+            <h3 className="font-tight pr-10 text-lg font-semibold leading-tight">
+              {movie.title}
             </h3>
-            <p className="mt-1 text-sm text-neutral-500">
+            <p className="text-sm text-neutral-500">{movie.year}</p>
+            <p className="mt-2 text-sm leading-snug text-neutral-500">
               {[movie.runtime, movie.director].filter(Boolean).join(" · ") ||
                 "No runtime or director listed"}
             </p>
-            <p className="mt-2 text-xs text-neutral-400">
-              <RatingBadges ratings={movie.ratings} />
-            </p>
           </div>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="h-9 w-9 shrink-0 rounded-lg border border-neutral-700 text-neutral-400"
-          >
-            <CrossIcon />
-          </button>
         </div>
+
+        {/* Full width rather than in the narrow column, where the two scores
+            were stacking one per line. */}
+        <p className="mt-3 text-sm text-neutral-400">
+          <RatingBadges ratings={movie.ratings} />
+        </p>
 
         <p className="mt-4 text-sm leading-relaxed text-neutral-300">
           {movie.plot ?? "No synopsis available for this one."}
