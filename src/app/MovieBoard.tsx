@@ -141,6 +141,55 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
     }
   }
 
+  /** True if the person currently using this browser has watched `movie`. */
+  function haveWatched(movie: Movie): boolean {
+    return movie.watchedBy.some(
+      (n) => n.toLowerCase() === name.trim().toLowerCase()
+    );
+  }
+
+  async function toggleWatched(movie: Movie) {
+    if (!name.trim()) {
+      setError("Enter your name first.");
+      return;
+    }
+    setError(null);
+
+    // Optimistic: flip it locally so the tap feels instant, then reconcile
+    // with whatever the server actually stored.
+    const optimistic = haveWatched(movie)
+      ? movie.watchedBy.filter(
+          (n) => n.toLowerCase() !== name.trim().toLowerCase()
+        )
+      : [...movie.watchedBy, name.trim()];
+    setMovies((current) =>
+      current.map((m) =>
+        m.id === movie.id ? { ...m, watchedBy: optimistic } : m
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/movies/${movie.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setMovies((current) =>
+        current.map((m) => (m.id === movie.id ? data.movie : m))
+      );
+    } catch (err) {
+      // Put it back the way it was.
+      setMovies((current) =>
+        current.map((m) =>
+          m.id === movie.id ? { ...m, watchedBy: movie.watchedBy } : m
+        )
+      );
+      setError(err instanceof Error ? err.message : "Could not update that one.");
+    }
+  }
+
   async function remove(movie: Movie) {
     // No undo — the row is gone from Redis. This confirm is the only guard.
     if (!window.confirm(`Remove ${movie.title}?`)) return;
@@ -331,22 +380,35 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                 </p>
                 <p className="mt-1 text-xs text-neutral-500">
                   added by{" "}
-                  <span className="text-neutral-200">
-                    {m.addedBy}
-                  </span>
+                  <span className="text-neutral-200">{m.addedBy}</span>
+                  {m.watchedBy.length > 0 && (
+                    <>
+                      {" · watched by "}
+                      <span className="text-emerald-300">
+                        {m.watchedBy.join(", ")}
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
-              {editing && (
-                <button
-                  type="button"
-                  onClick={() => remove(m)}
-                  disabled={busy}
-                  aria-label={`Remove ${m.title}`}
-                  className="h-9 w-9 shrink-0 self-center rounded-lg border border-red-900 text-red-400 disabled:opacity-50"
-                >
-                  <CrossIcon />
-                </button>
-              )}
+              <div className="flex shrink-0 items-center gap-2 self-center">
+                <WatchedButton
+                  watched={haveWatched(m)}
+                  title={m.title}
+                  onClick={() => toggleWatched(m)}
+                />
+                {editing && (
+                  <button
+                    type="button"
+                    onClick={() => remove(m)}
+                    disabled={busy}
+                    aria-label={`Remove ${m.title}`}
+                    className="h-9 w-9 rounded-lg border border-red-900 text-red-400 disabled:opacity-50"
+                  >
+                    <CrossIcon />
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -359,6 +421,21 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
             <li key={m.id} className="min-w-0">
               <div className="relative">
                 <Poster src={m.poster} title={m.title} variant="grid" />
+                {/* Overlaid on the poster rather than added as another text
+                    row, so marking watched cannot change the cell height. */}
+                <button
+                  type="button"
+                  onClick={() => toggleWatched(m)}
+                  aria-label={`${haveWatched(m) ? "Unmark" : "Mark"} ${m.title} watched`}
+                  aria-pressed={haveWatched(m)}
+                  className={`absolute bottom-1 left-1 flex h-8 w-8 items-center justify-center rounded-lg ${
+                    haveWatched(m)
+                      ? "bg-emerald-500 text-neutral-950"
+                      : "bg-neutral-950/85 text-neutral-400"
+                  }`}
+                >
+                  <CheckIcon />
+                </button>
                 {editing && (
                   <button
                     type="button"
@@ -481,6 +558,40 @@ function PencilIcon() {
     <svg {...iconProps}>
       <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
       <path d="m15 5 4 4" />
+    </svg>
+  );
+}
+
+function WatchedButton({
+  watched,
+  title,
+  onClick,
+}: {
+  watched: boolean;
+  title: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`${watched ? "Unmark" : "Mark"} ${title} watched`}
+      aria-pressed={watched}
+      className={`h-9 w-9 rounded-lg border ${
+        watched
+          ? "border-emerald-500 bg-emerald-500 text-neutral-950"
+          : "border-neutral-700 text-neutral-500"
+      }`}
+    >
+      <CheckIcon />
+    </button>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg {...iconProps} className="mx-auto">
+      <path d="M20 6 9 17l-5-5" />
     </svg>
   );
 }

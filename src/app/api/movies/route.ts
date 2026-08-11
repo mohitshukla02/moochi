@@ -39,7 +39,12 @@ export async function POST(request: Request) {
     }
 
     const details = await fetchMovie(id);
-    const movie = { ...details, addedBy, addedAt: new Date().toISOString() };
+    const movie = {
+      ...details,
+      addedBy,
+      addedAt: new Date().toISOString(),
+      watchedBy: [],
+    };
     await addMovie(movie);
 
     return NextResponse.json({ movie }, { status: 201 });

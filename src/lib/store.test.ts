@@ -13,6 +13,7 @@ function movie(id: string, title: string, addedBy = "Mohit"): Movie {
     ratings: { imdb: null, rt: null, metacritic: null },
     addedBy,
     addedAt: new Date().toISOString(),
+    watchedBy: [],
   };
 }
 
@@ -144,5 +145,87 @@ describe("store (in-memory fallback)", () => {
 
     expect(result).toBe(true);
     expect(all.map((m) => m.id)).toEqual(["tt3", "tt2"]);
+  });
+});
+
+describe("toggleWatched (in-memory fallback)", () => {
+  it("adds the name on first toggle", async () => {
+    const { addMovie, toggleWatched } = await import("./store");
+    await addMovie(movie("tt1", "Heat"));
+
+    const updated = await toggleWatched("tt1", "Priya");
+
+    expect(updated?.watchedBy).toEqual(["Priya"]);
+  });
+
+  it("removes the name on second toggle", async () => {
+    const { addMovie, toggleWatched } = await import("./store");
+    await addMovie(movie("tt1", "Heat"));
+
+    await toggleWatched("tt1", "Priya");
+    const updated = await toggleWatched("tt1", "Priya");
+
+    expect(updated?.watchedBy).toEqual([]);
+  });
+
+  it("treats differing case as the same person", async () => {
+    const { addMovie, toggleWatched } = await import("./store");
+    await addMovie(movie("tt1", "Heat"));
+
+    await toggleWatched("tt1", "Priya");
+    const updated = await toggleWatched("tt1", "pRIYA");
+
+    expect(updated?.watchedBy).toEqual([]);
+  });
+
+  it("stores the casing the person actually typed", async () => {
+    const { addMovie, toggleWatched } = await import("./store");
+    await addMovie(movie("tt1", "Heat"));
+
+    const updated = await toggleWatched("tt1", "pRIYA");
+
+    expect(updated?.watchedBy).toEqual(["pRIYA"]);
+  });
+
+  it("keeps separate people independent", async () => {
+    const { addMovie, toggleWatched } = await import("./store");
+    await addMovie(movie("tt1", "Heat"));
+
+    await toggleWatched("tt1", "Priya");
+    await toggleWatched("tt1", "Mohit");
+    const updated = await toggleWatched("tt1", "Priya");
+
+    expect(updated?.watchedBy).toEqual(["Mohit"]);
+  });
+
+  it("persists to the list and leaves other movies untouched", async () => {
+    const { addMovie, toggleWatched, listMovies } = await import("./store");
+    await addMovie(movie("tt1", "Heat"));
+    await addMovie(movie("tt2", "Collateral"));
+
+    await toggleWatched("tt2", "Ada");
+    const all = await listMovies();
+
+    expect(all.find((m) => m.id === "tt2")?.watchedBy).toEqual(["Ada"]);
+    expect(all.find((m) => m.id === "tt1")?.watchedBy).toEqual([]);
+  });
+
+  it("returns null for an unknown movie", async () => {
+    const { toggleWatched } = await import("./store");
+    expect(await toggleWatched("nope", "Priya")).toBeNull();
+  });
+
+  it("defaults watchedBy for records written before the field existed", async () => {
+    const { addMovie, listMovies, toggleWatched } = await import("./store");
+    // Simulate a legacy record by stripping the field before it is stored.
+    const legacy = movie("tt9", "Legacy") as Partial<Movie>;
+    delete legacy.watchedBy;
+    await addMovie(legacy as Movie);
+
+    const all = await listMovies();
+    expect(all[0].watchedBy).toEqual([]);
+
+    const updated = await toggleWatched("tt9", "Priya");
+    expect(updated?.watchedBy).toEqual(["Priya"]);
   });
 });

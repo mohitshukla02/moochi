@@ -112,10 +112,14 @@ async function listRaw(): Promise<{ movie: Movie; raw: string }[]> {
   return entries.map((entry) => {
     // @upstash/redis auto-deserializes JSON on read depending on version, so
     // lrange may hand back objects OR strings. Handle both.
-    if (typeof entry === "string") {
-      return { movie: JSON.parse(entry) as Movie, raw: entry };
-    }
-    return { movie: entry as Movie, raw: JSON.stringify(entry) };
+    const movie = (
+      typeof entry === "string" ? JSON.parse(entry) : entry
+    ) as Movie;
+    const raw = typeof entry === "string" ? entry : JSON.stringify(entry);
+
+    // watchedBy was added after the first records were written. Filling it in
+    // here means no backfill and no undefined checks anywhere downstream.
+    return { movie: { ...movie, watchedBy: movie.watchedBy ?? [] }, raw };
   });
 }
 
@@ -132,6 +136,37 @@ export async function addMovie(movie: Movie): Promise<Movie> {
 export async function hasMovie(id: string): Promise<Movie | null> {
   const movies = await listMovies();
   return movies.find((m) => m.id === id) ?? null;
+}
+
+/**
+ * Adds or removes `name` from a movie's watchedBy list and returns the updated
+ * movie, or null if the movie is gone. Names are compared case-insensitively,
+ * so "mohit" and "Mohit" are the same person, but the casing the person typed
+ * is what gets stored.
+ *
+ * Read-modify-write: if two people toggle the same movie in the same instant
+ * one update can be lost. At five users that is not worth a lock.
+ */
+export async function toggleWatched(
+  id: string,
+  name: string
+): Promise<Movie | null> {
+  const entries = await listRaw();
+  const index = entries.findIndex((e) => e.movie.id === id);
+  if (index === -1) return null;
+
+  const movie = entries[index].movie;
+  const already = movie.watchedBy.some(
+    (n) => n.toLowerCase() === name.toLowerCase()
+  );
+  const watchedBy = already
+    ? movie.watchedBy.filter((n) => n.toLowerCase() !== name.toLowerCase())
+    : [...movie.watchedBy, name];
+
+  const updated = { ...movie, watchedBy };
+  // Index is into the RAW list, which is what LSET expects.
+  await getBackend().lset(MOVIES_KEY, index, JSON.stringify(updated));
+  return updated;
 }
 
 const DELETE_SENTINEL = "__moochi_deleted__";

@@ -15,6 +15,13 @@ export type Movie = {
   ratings: Ratings;
   addedBy: string;
   addedAt: string;
+  /**
+   * Names of people who have marked this watched. There are no accounts — the
+   * name typed into the header IS the identity, matched case-insensitively.
+   * Records written before this field existed lack it, so the store fills in
+   * an empty array on read rather than requiring a backfill.
+   */
+  watchedBy: string[];
 };
 
 export type SearchResult = {

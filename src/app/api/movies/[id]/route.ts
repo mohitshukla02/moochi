@@ -1,5 +1,39 @@
 import { NextResponse } from "next/server";
-import { deleteMovie } from "@/lib/store";
+import { deleteMovie, toggleWatched } from "@/lib/store";
+
+/** Toggles whether the given name has watched this movie. */
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  let body: { name?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Bad request." }, { status: 400 });
+  }
+
+  const name = body.name?.trim().slice(0, 40);
+  if (!name) {
+    return NextResponse.json({ error: "Enter your name first." }, { status: 400 });
+  }
+
+  const { id } = await params;
+
+  try {
+    const movie = await toggleWatched(id, name);
+    if (!movie) {
+      return NextResponse.json({ error: "Not found." }, { status: 404 });
+    }
+    return NextResponse.json({ movie });
+  } catch (error) {
+    console.error("toggle watched failed", error);
+    return NextResponse.json(
+      { error: "Could not update that one." },
+      { status: 502 }
+    );
+  }
+}
 
 /**
  * Deliberately unauthenticated: the link only lives in a private group chat,
