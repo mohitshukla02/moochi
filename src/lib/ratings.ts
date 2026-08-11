@@ -23,7 +23,7 @@ export function normalizeRatings(ratings: OmdbRating[] | undefined): Ratings {
   if (!ratings) return out;
 
   for (const { Source, Value } of ratings) {
-    const key = SOURCE_MAP[Source];
+    const key = Object.hasOwn(SOURCE_MAP, Source) ? SOURCE_MAP[Source] : undefined;
     if (!key) continue;
     if (!Value || Value === "N/A") continue;
     out[key] = Value;

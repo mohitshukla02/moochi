@@ -59,4 +59,14 @@ describe("normalizeRatings", () => {
       ])
     ).toEqual({ imdb: "6.0/10", rt: null, metacritic: "50/100" });
   });
+
+  it("ignores inherited Object properties as sources", () => {
+    expect(
+      normalizeRatings([
+        { Source: "toString", Value: "junk" },
+        { Source: "constructor", Value: "junk" },
+        { Source: "Rotten Tomatoes", Value: "77%" },
+      ])
+    ).toEqual({ imdb: null, rt: "77%", metacritic: null });
+  });
 });
