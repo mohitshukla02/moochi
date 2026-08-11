@@ -111,7 +111,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
 
   return (
     <main className="mx-auto max-w-xl p-4">
-      <div className="sticky top-0 z-10 space-y-2 bg-neutral-950 pb-3 pt-2">
+      <div className="sticky top-0 z-20 space-y-2 bg-neutral-950 pb-3 pt-2">
         <div className="flex items-center justify-between gap-3">
           <h1 className="font-display text-2xl">MOOCHI</h1>
           {ready && name && !renaming && (
@@ -132,8 +132,9 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
         {/* One control, not two: the name is asked for once and then lives in
             the header, which buys back a whole row of vertical space. The
             fixed-height shell keeps the layout from jumping on first paint,
-            before the stored name has been read. */}
-        <div className="min-h-[50px]">
+            before the stored name has been read. `relative` anchors the search
+            results overlay below it. */}
+        <div className="relative min-h-[50px]">
           {askingName ? (
             <form onSubmit={submitName} className="flex gap-2">
               <input
@@ -157,6 +158,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                 placeholder="Find movie"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Escape" && setResults([])}
               />
               <button
                 type="submit"
@@ -167,29 +169,40 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
               </button>
             </form>
           ) : null}
+
+          {/* Results float over the page rather than pushing it down — the
+              list underneath is the thing you are adding to, so shoving it
+              off screen to show candidates is backwards. */}
+          {results.length > 0 && (
+            <>
+              <div
+                className="fixed inset-0 z-30"
+                onClick={() => setResults([])}
+                aria-hidden
+              />
+              <ul className="absolute left-0 right-0 top-full z-40 mt-2 max-h-[60vh] space-y-2 overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-950 p-2 shadow-2xl">
+                {results.map((r) => (
+                  <li key={r.id}>
+                    <button
+                      onClick={() => add(r)}
+                      disabled={busy}
+                      className="flex w-full items-center gap-3 rounded-lg border border-neutral-800 p-2 text-left disabled:opacity-50"
+                    >
+                      <Poster src={r.poster} title={r.title} />
+                      <span className="min-w-0">
+                        {r.title}{" "}
+                        <span className="text-neutral-500">({r.year})</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
       </div>
-
-      {results.length > 0 && (
-        <ul className="mb-6 space-y-2">
-          {results.map((r) => (
-            <li key={r.id}>
-              <button
-                onClick={() => add(r)}
-                disabled={busy}
-                className="flex w-full items-center gap-3 rounded-lg border border-neutral-800 p-2 text-left disabled:opacity-50"
-              >
-                <Poster src={r.poster} title={r.title} />
-                <span>
-                  {r.title} <span className="text-neutral-500">({r.year})</span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
 
       <div className="mb-3 flex items-end justify-between gap-3 border-b border-neutral-800 pb-2">
         <div>
@@ -504,13 +517,18 @@ function Poster({
   title: string;
   variant?: "row" | "grid";
 }) {
+  // OMDb sometimes hands back a poster URL that 404s, especially on obscure
+  // titles. Without this the browser paints its broken-image glyph, so treat a
+  // load failure exactly like a missing poster.
+  const [failed, setFailed] = useState(false);
+
   // Row: a fixed thumbnail beside text. Grid: fills its cell at poster ratio.
   const box =
     variant === "grid"
       ? "w-full aspect-[2/3]"
       : "h-[81px] w-[54px] shrink-0";
 
-  if (!src) {
+  if (!src || failed) {
     return (
       <div
         className={`${box} flex items-center justify-center rounded-lg bg-neutral-800 p-1 text-center text-[9px] text-neutral-500`}
@@ -525,6 +543,7 @@ function Poster({
       src={src}
       alt=""
       loading="lazy"
+      onError={() => setFailed(true)}
       className={`${box} rounded-lg object-cover`}
     />
   );
