@@ -14,6 +14,7 @@ function movie(id: string, title: string, addedBy = "Mohit"): Movie {
     addedBy,
     addedAt: new Date().toISOString(),
     watchedBy: [],
+    kind: "movie",
   };
 }
 
@@ -227,5 +228,28 @@ describe("toggleWatched (in-memory fallback)", () => {
 
     const updated = await toggleWatched("tt9", "Priya");
     expect(updated?.watchedBy).toEqual(["Priya"]);
+  });
+});
+
+
+describe("kind defaulting", () => {
+  it("treats records written before shows existed as films", async () => {
+    const { addMovie, listMovies } = await import("./store");
+    const legacy = movie("tt9", "Legacy") as Partial<Movie>;
+    delete legacy.kind;
+
+    await addMovie(legacy as Movie);
+    const all = await listMovies();
+
+    expect(all[0].kind).toBe("movie");
+  });
+
+  it("preserves an explicit series kind", async () => {
+    const { addMovie, listMovies } = await import("./store");
+    await addMovie({ ...movie("tt8", "Breaking Bad"), kind: "series" });
+
+    const all = await listMovies();
+
+    expect(all[0].kind).toBe("series");
   });
 });

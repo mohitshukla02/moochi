@@ -117,9 +117,17 @@ async function listRaw(): Promise<{ movie: Movie; raw: string }[]> {
     ) as Movie;
     const raw = typeof entry === "string" ? entry : JSON.stringify(entry);
 
-    // watchedBy was added after the first records were written. Filling it in
-    // here means no backfill and no undefined checks anywhere downstream.
-    return { movie: { ...movie, watchedBy: movie.watchedBy ?? [] }, raw };
+    // watchedBy and kind were both added after the first records were
+    // written. Filling them in here means no backfill and no undefined checks
+    // anywhere downstream. Everything stored before shows existed is a film.
+    return {
+      movie: {
+        ...movie,
+        watchedBy: movie.watchedBy ?? [],
+        kind: movie.kind ?? "movie",
+      },
+      raw,
+    };
   });
 }
 

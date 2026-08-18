@@ -57,7 +57,37 @@ describe("fetchMovie", () => {
       boxOffice: null,
       country: null,
       language: null,
+      // Absent Type means OMDb is describing a film.
+      kind: "movie",
+      totalSeasons: null,
     });
+  });
+
+  it("marks a series as such and keeps its season count", async () => {
+    vi.stubEnv("OMDB_API_KEY", "testkey");
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        Response: "True",
+        imdbID: "tt0903747",
+        Title: "Breaking Bad",
+        Year: "2008–2013",
+        Poster: "N/A",
+        Runtime: "49 min",
+        Director: "N/A",
+        Plot: "N/A",
+        Type: "series",
+        totalSeasons: "5",
+      })
+    );
+
+    const show = await fetchMovie("tt0903747");
+
+    expect(show.kind).toBe("series");
+    expect(show.totalSeasons).toBe("5");
+    expect(show.year).toBe("2008–2013");
+    // Series have no director in OMDb.
+    expect(show.director).toBeNull();
   });
 
   it("maps the extra detail fields when present", async () => {

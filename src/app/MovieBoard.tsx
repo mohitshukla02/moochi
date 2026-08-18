@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Movie, SearchResult } from "@/lib/types";
+import type { Kind, Movie, SearchResult } from "@/lib/types";
 
 type Sort = "added" | "year-desc" | "year-asc" | "rating-desc";
 
@@ -56,21 +56,28 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
   const [ready, setReady] = useState(false);
   const [sort, setSort] = useState<Sort>("added");
   const [detail, setDetail] = useState<Movie | null>(null);
+  const [kind, setKind] = useState<Kind>("movie");
+
+  // Films and shows share one list; the tab decides which half is on screen.
+  const visible = useMemo(
+    () => movies.filter((m) => (m.kind ?? "movie") === kind),
+    [movies, kind]
+  );
 
   // "added" is the server's own order (newest first), so it needs no sorting.
   // Sort on a copy — reversing state in place would mutate it.
   const sorted = useMemo(() => {
     switch (sort) {
       case "year-desc":
-        return [...movies].sort(by(yearOf, "desc"));
+        return [...visible].sort(by(yearOf, "desc"));
       case "year-asc":
-        return [...movies].sort(by(yearOf, "asc"));
+        return [...visible].sort(by(yearOf, "asc"));
       case "rating-desc":
-        return [...movies].sort(by(imdbScore, "desc"));
+        return [...visible].sort(by(imdbScore, "desc"));
       default:
-        return movies;
+        return visible;
     }
-  }, [movies, sort]);
+  }, [visible, sort]);
 
   // The page is server-rendered, so localStorage cannot be read during render
   // or in a lazy useState initializer without causing a hydration mismatch
@@ -103,7 +110,9 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(
+        `/api/search?q=${encodeURIComponent(query)}&kind=${kind}`
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setResults(data.results);
@@ -257,7 +266,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
             <form onSubmit={search} className="flex gap-2">
               <input
                 className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-900 p-3"
-                placeholder="Find movie"
+                placeholder={kind === "series" ? "Find show" : "Find movie"}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Escape" && setResults([])}
@@ -306,6 +315,30 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
         {error && <p className="text-sm text-red-400">{error}</p>}
       </div>
 
+      {/* Films and shows are one list underneath; these tabs just filter it,
+          so a title can never be lost by being on the "wrong" tab. */}
+      <div className="mb-3 flex gap-1 border-b border-neutral-800">
+        {(["movie", "series"] as Kind[]).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => {
+              setKind(k);
+              setResults([]);
+              setError(null);
+            }}
+            aria-current={kind === k ? "page" : undefined}
+            className={`-mb-px border-b-2 px-3 py-2 text-sm ${
+              kind === k
+                ? "border-neutral-100 font-medium text-neutral-100"
+                : "border-transparent text-neutral-500"
+            }`}
+          >
+            {k === "movie" ? "Movies" : "Shows"}
+          </button>
+        ))}
+      </div>
+
       <div className="mb-3 flex items-end justify-between gap-3 border-b border-neutral-800 pb-2">
         <div>
           <h2 className="font-tight text-lg font-semibold">Must watch</h2>
@@ -313,7 +346,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
               the header from growing back the space it just gave up. */}
           <p className="flex items-center gap-1.5 text-xs text-neutral-500">
             <span className="shrink-0">
-              {movies.length} {movies.length === 1 ? "title" : "titles"}
+              {visible.length} {visible.length === 1 ? "title" : "titles"}
             </span>
             <span aria-hidden>·</span>
             <select
@@ -388,7 +421,10 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                   <span className="text-neutral-500">({m.year})</span>
                 </p>
                 <p className="text-sm text-neutral-500">
-                  {[m.runtime, m.director].filter(Boolean).join(" · ")}
+                  {/* Series carry no director in OMDb, so show the creator. */}
+                  {[m.runtime, m.director ?? m.writer]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
                 <p className="mt-1 text-xs text-neutral-400">
                   <RatingBadges ratings={m.ratings} />
@@ -511,8 +547,10 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
         </ul>
       )}
 
-      {movies.length === 0 && (
-        <p className="text-neutral-500">Nothing on the list yet.</p>
+      {visible.length === 0 && (
+        <p className="text-neutral-500">
+          {kind === "series" ? "No shows yet." : "Nothing on the list yet."}
+        </p>
       )}
 
       {detail && (
@@ -630,6 +668,7 @@ function MovieModal({
   }, [onClose]);
 
   const oscars = oscarWins(movie.awards);
+  const isSeries = (movie.kind ?? "movie") === "series";
   const added = new Date(movie.addedAt);
   const addedLabel = Number.isNaN(added.getTime())
     ? null
@@ -696,9 +735,17 @@ function MovieModal({
         </p>
 
         <dl className="mt-4 space-y-1.5 border-t border-neutral-800 pt-3 text-xs text-neutral-500">
-          <Fact label="Director" value={movie.director} />
+          {/* OMDb gives series no director, and its runtime is per episode. */}
+          <Fact
+            label={isSeries ? "Creator" : "Director"}
+            value={isSeries ? movie.writer : movie.director}
+          />
           <Fact label="Cast" value={movie.actors} />
-          <Fact label="Runtime" value={movie.runtime} />
+          <Fact label="Seasons" value={movie.totalSeasons} />
+          <Fact
+            label={isSeries ? "Episode" : "Runtime"}
+            value={movie.runtime}
+          />
           <Fact label="Language" value={movie.language} />
           <Fact label="Awards" value={movie.awards} />
           <Fact

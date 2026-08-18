@@ -1,5 +1,5 @@
 import { normalizeRatings, nullIfNA } from "./ratings";
-import type { OmdbMovie, OmdbSearchResponse, SearchResult } from "./types";
+import type { Kind, OmdbMovie, OmdbSearchResponse, SearchResult } from "./types";
 
 const BASE = "https://www.omdbapi.com/";
 
@@ -33,11 +33,14 @@ async function get<T>(params: Record<string, string>): Promise<T> {
  * back empty. When that happens we retry against the exact-title endpoint,
  * which resolves those to the obvious film.
  */
-export async function searchTitles(query: string): Promise<SearchResult[]> {
-  const data = await get<OmdbSearchResponse>({ s: query, type: "movie" });
+export async function searchTitles(
+  query: string,
+  kind: Kind = "movie"
+): Promise<SearchResult[]> {
+  const data = await get<OmdbSearchResponse>({ s: query, type: kind });
 
   if (data.Response !== "True" || !data.Search) {
-    if (isTooBroad(data.Error)) return exactTitle(query);
+    if (isTooBroad(data.Error)) return exactTitle(query, kind);
     return [];
   }
 
@@ -58,8 +61,11 @@ function isTooBroad(error: string | undefined): boolean {
  * Exact-title lookup, used only as a fallback. Returns at most one result, or
  * an empty array if even the exact title finds nothing.
  */
-async function exactTitle(query: string): Promise<SearchResult[]> {
-  const data = await get<OmdbMovie>({ t: query, type: "movie" });
+async function exactTitle(
+  query: string,
+  kind: Kind = "movie"
+): Promise<SearchResult[]> {
+  const data = await get<OmdbMovie>({ t: query, type: kind });
   if (data.Response !== "True") return [];
 
   return [
@@ -88,6 +94,10 @@ export async function fetchMovie(imdbId: string) {
     director: nullIfNA(data.Director),
     plot: nullIfNA(data.Plot),
     ratings: normalizeRatings(data.Ratings),
+    // Taken from OMDb rather than the client, so the stored kind always
+    // matches what the record actually is.
+    kind: (data.Type === "series" ? "series" : "movie") as Kind,
+    totalSeasons: nullIfNA(data.totalSeasons),
     genre: nullIfNA(data.Genre),
     actors: nullIfNA(data.Actors),
     writer: nullIfNA(data.Writer),

@@ -4,8 +4,18 @@ export type Ratings = {
   metacritic: string | null;
 };
 
+export type Kind = "movie" | "series";
+
 export type Movie = {
   id: string;
+  /**
+   * Films and shows share one list, separated by a tab in the UI. Optional
+   * because records written before shows existed lack it — the store defaults
+   * them to "movie" on read, so no backfill is needed.
+   */
+  kind?: Kind;
+  /** Series only. */
+  totalSeasons?: string | null;
   title: string;
   year: string;
   poster: string | null;
@@ -66,6 +76,8 @@ export type OmdbMovie = {
   BoxOffice: string;
   Country: string;
   Language: string;
+  Type?: string;
+  totalSeasons?: string;
   Ratings?: OmdbRating[];
 };
 
