@@ -108,7 +108,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
       if (!res.ok) throw new Error(data.error);
       setResults(data.results);
       if (data.results.length === 0) {
-        setError("Nothing found. Try adding the year.");
+        setError("Nothing found. Try the full title, or add a year.");
       }
     } catch {
       setError("Search is unavailable right now.");

@@ -27,10 +27,19 @@ async function get<T>(params: Record<string, string>): Promise<T> {
 /**
  * Thin search results. Carries no ratings — OMDb's search endpoint does not
  * return them, which is why selecting a result triggers fetchMovie.
+ *
+ * OMDb refuses queries that match too much with "Too many results" rather than
+ * returning a truncated list, which is how a real film like "42" or "9" came
+ * back empty. When that happens we retry against the exact-title endpoint,
+ * which resolves those to the obvious film.
  */
 export async function searchTitles(query: string): Promise<SearchResult[]> {
   const data = await get<OmdbSearchResponse>({ s: query, type: "movie" });
-  if (data.Response !== "True" || !data.Search) return [];
+
+  if (data.Response !== "True" || !data.Search) {
+    if (isTooBroad(data.Error)) return exactTitle(query);
+    return [];
+  }
 
   return data.Search.map((r) => ({
     id: r.imdbID,
@@ -38,6 +47,29 @@ export async function searchTitles(query: string): Promise<SearchResult[]> {
     year: r.Year,
     poster: nullIfNA(r.Poster),
   }));
+}
+
+/** OMDb's way of saying the query matched too much to list. */
+function isTooBroad(error: string | undefined): boolean {
+  return (error ?? "").toLowerCase().includes("too many results");
+}
+
+/**
+ * Exact-title lookup, used only as a fallback. Returns at most one result, or
+ * an empty array if even the exact title finds nothing.
+ */
+async function exactTitle(query: string): Promise<SearchResult[]> {
+  const data = await get<OmdbMovie>({ t: query, type: "movie" });
+  if (data.Response !== "True") return [];
+
+  return [
+    {
+      id: data.imdbID,
+      title: data.Title,
+      year: data.Year,
+      poster: nullIfNA(data.Poster),
+    },
+  ];
 }
 
 /** Full record for one title, with ratings normalized. */

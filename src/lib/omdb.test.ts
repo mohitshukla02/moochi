@@ -216,3 +216,95 @@ describe("searchTitles", () => {
     expect(url).toContain("s=batman");
   });
 });
+
+describe("searchTitles fallback for over-broad queries", () => {
+  it("falls back to the exact-title endpoint on 'Too many results'", async () => {
+    vi.stubEnv("OMDB_API_KEY", "testkey");
+    const spy = vi
+      .fn()
+      // s=42 -> OMDb refuses
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ Response: "False", Error: "Too many results." }),
+      })
+      // t=42 -> the obvious film
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          Response: "True",
+          imdbID: "tt0453562",
+          Title: "42",
+          Year: "2013",
+          Poster: "https://example.com/42.jpg",
+        }),
+      });
+    vi.stubGlobal("fetch", spy);
+
+    const results = await searchTitles("42");
+
+    expect(results).toEqual([
+      {
+        id: "tt0453562",
+        title: "42",
+        year: "2013",
+        poster: "https://example.com/42.jpg",
+      },
+    ]);
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(String(spy.mock.calls[1][0])).toContain("t=42");
+  });
+
+  it("returns empty when even the exact title finds nothing", async () => {
+    vi.stubEnv("OMDB_API_KEY", "testkey");
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ Response: "False", Error: "Too many results." }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ Response: "False", Error: "Movie not found!" }),
+        })
+    );
+
+    expect(await searchTitles("zzz")).toEqual([]);
+  });
+
+  it("does not fall back when the query genuinely matches nothing", async () => {
+    vi.stubEnv("OMDB_API_KEY", "testkey");
+    const spy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ Response: "False", Error: "Movie not found!" }),
+    });
+    vi.stubGlobal("fetch", spy);
+
+    expect(await searchTitles("zzzzqqq")).toEqual([]);
+    // One call only: no wasted quota on a hopeless query.
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not make an extra call when the search succeeds", async () => {
+    vi.stubEnv("OMDB_API_KEY", "testkey");
+    const spy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        Response: "True",
+        Search: [
+          {
+            imdbID: "tt1",
+            Title: "Heat",
+            Year: "1995",
+            Poster: "N/A",
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", spy);
+
+    expect(await searchTitles("heat")).toHaveLength(1);
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
