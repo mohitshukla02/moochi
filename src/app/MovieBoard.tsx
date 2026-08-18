@@ -57,12 +57,21 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
   const [sort, setSort] = useState<Sort>("added");
   const [detail, setDetail] = useState<Movie | null>(null);
   const [kind, setKind] = useState<Kind>("movie");
+  const [unwatchedOnly, setUnwatchedOnly] = useState(false);
 
   // Films and shows share one list; the tab decides which half is on screen.
-  const visible = useMemo(
-    () => movies.filter((m) => (m.kind ?? "movie") === kind),
-    [movies, kind]
-  );
+  // The unwatched filter is per-person, keyed on the name in the header, so
+  // "unwatched" means unwatched *by you* rather than by nobody.
+  const visible = useMemo(() => {
+    const me = name.trim().toLowerCase();
+    return movies
+      .filter((m) => (m.kind ?? "movie") === kind)
+      .filter(
+        (m) =>
+          !unwatchedOnly ||
+          !m.watchedBy.some((w) => w.toLowerCase() === me)
+      );
+  }, [movies, kind, unwatchedOnly, name]);
 
   // "added" is the server's own order (newest first), so it needs no sorting.
   // Sort on a copy — reversing state in place would mutate it.
@@ -344,11 +353,28 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
           <h2 className="font-tight text-lg font-semibold">Must watch</h2>
           {/* Sort sits on the count line rather than in its own row, to keep
               the header from growing back the space it just gave up. */}
-          <p className="flex items-center gap-1.5 text-xs text-neutral-500">
+          <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-neutral-500">
             <span className="shrink-0">
               {visible.length} {visible.length === 1 ? "title" : "titles"}
             </span>
             <span aria-hidden>·</span>
+            {name && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setUnwatchedOnly(!unwatchedOnly)}
+                  aria-pressed={unwatchedOnly}
+                  className={`shrink-0 rounded-lg border px-2 py-0.5 ${
+                    unwatchedOnly
+                      ? "border-neutral-200 text-neutral-100"
+                      : "border-neutral-700 text-neutral-400"
+                  }`}
+                >
+                  Unwatched
+                </button>
+                <span aria-hidden>·</span>
+              </>
+            )}
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as Sort)}
@@ -549,7 +575,11 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
 
       {visible.length === 0 && (
         <p className="text-neutral-500">
-          {kind === "series" ? "No shows yet." : "Nothing on the list yet."}
+          {unwatchedOnly
+            ? "You have watched everything here."
+            : kind === "series"
+              ? "No shows yet."
+              : "Nothing on the list yet."}
         </p>
       )}
 
