@@ -366,7 +366,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                   aria-pressed={unwatchedOnly}
                   className={`shrink-0 rounded-lg border px-2 py-0.5 ${
                     unwatchedOnly
-                      ? "border-neutral-200 text-neutral-100"
+                      ? "border-neutral-100 bg-neutral-100 font-medium text-neutral-900"
                       : "border-neutral-700 text-neutral-400"
                   }`}
                 >
@@ -516,7 +516,7 @@ export default function MovieBoard({ initial }: { initial: Movie[] }) {
                   aria-pressed={haveWatched(m)}
                   className={`absolute bottom-1 left-1 flex h-8 w-8 items-center justify-center rounded-lg ${
                     haveWatched(m)
-                      ? "bg-neutral-900/90 text-white"
+                      ? "bg-neutral-100 text-neutral-900"
                       : "bg-neutral-950/85 text-neutral-600"
                   }`}
                 >
@@ -844,7 +844,7 @@ function WatchedButton({
       aria-pressed={watched}
       className={`h-9 w-9 rounded-lg border ${
         watched
-          ? "border-neutral-200 text-white"
+          ? "border-neutral-100 bg-neutral-100 text-neutral-900"
           : "border-neutral-700 text-neutral-600"
       }`}
     >
