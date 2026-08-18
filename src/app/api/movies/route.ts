@@ -43,7 +43,10 @@ export async function POST(request: Request) {
       ...details,
       addedBy,
       addedAt: new Date().toISOString(),
-      watchedBy: [],
+      // Adding counts as having seen it: people here add things they are
+      // recommending. Anyone adding something they have not watched can
+      // untick it. Existing records are untouched.
+      watchedBy: [addedBy],
     };
     await addMovie(movie);
 
